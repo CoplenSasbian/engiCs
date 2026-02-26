@@ -1,0 +1,115 @@
+# -----------------------------------------------------------------------------
+# CMake / Build Directories
+# -----------------------------------------------------------------------------
+# 默认构建目录 (通常推荐在 build/ 中构建)
+build/
+cmake-build-*/
+out/
+bin/
+lib/
+obj/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# CMake 生成的文件 (不要提交这些，它们由 CMake 生成)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# -----------------------------------------------------------------------------
+# IDE Specific Files
+# -----------------------------------------------------------------------------
+
+# CLion
+.idea/
+*.iml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vcxproj.filters
+*.vcxproj.user
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+ipch/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcuserstate
+
+# Eclipse
+.cproject
+.settings/
+.project
+
+# Qt Creator
+*.creator
+*.creator.user
+*.files
+*.includes
+
+# -----------------------------------------------------------------------------
+# Compiler & Linker Temp Files
+# -----------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+*~
+\#*\#
+.DS_Store              # macOS
+Thumbs.db              # Windows
+desktop.ini            # Windows
+
+# -----------------------------------------------------------------------------
+# Dependencies / Package Managers (Optional)
+# -----------------------------------------------------------------------------
+# 如果你使用 vcpkg, conan 等，通常建议忽略安装的包，但保留配置文件
+vcpkg_installed/
+conanfile.txt.lock
+conan.lock
+_deps/                 # CMake FetchContent 默认下载目录
+
+# -----------------------------------------------------------------------------
+# Secrets & Configs (Best Practice)
+# -----------------------------------------------------------------------------
+# 不要提交包含密码、API Key 的本地配置文件
+.env
+*.pem
+*.key
+config.local.h
+settings.local.json

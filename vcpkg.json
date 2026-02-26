@@ -1,0 +1,17 @@
+{
+  "name": "ecs",
+  "dependencies": [
+    "mimalloc",
+    "plf-hive",
+    "sqlite3",
+    "sqlite-modern-cpp",
+    "spdlog",
+    "lua",
+    "sol2",
+    "boost-container",
+    "boost-lockfree",
+    "libuv"
+  ],
+  "version-string": "1.1.1"
+}
+
