@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.25.0)
 
-set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_TOOLCHAIN_FILE "E:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 
 project ("ecs" LANGUAGES CXX C)
