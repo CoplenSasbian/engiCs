@@ -1,5 +1,6 @@
 module;
 #include <memory>
+#include <optional>
 
 export module game.context;
 import nx.concurrency.threadpool;
@@ -11,7 +12,8 @@ export namespace game {
 	class Context :IComponent {
 	public:
 		void PreInitialize() override;
-		void Initialize() override;
+
+		std::optional<NxError> Initialize() override;
 
 		void Shutdown() override;
 

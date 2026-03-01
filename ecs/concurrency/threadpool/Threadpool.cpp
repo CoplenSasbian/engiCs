@@ -3,8 +3,8 @@ module;
 #include <chrono>
 #include <thread>
 #include <latch>
-#include "core/log/log.h"
-#include "core/container/concurrent_queue.h"
+#include "log/log.h"
+#include "container/concurrent_queue.h"
 #include "exec/env.hpp"
 
 module nx.concurrency.threadpool;
@@ -15,164 +15,143 @@ import nx.core.memory;
 LOGGER(thread_pool);
 
 
-constexpr size_t GlobalTaskQueueSize = 1024;
-constexpr size_t LocalTaskQueueSize = 128;
-constexpr size_t MaxSpinCount = 20;
-
-thread_local nx::ThreadPack *tCurrentPack;
 thread_local int tCurrentThreadToken = -1;
 
 
-nx::Threadpool::Threadpool(size_t threadNums, std::optional<std::function<void(size_t index)> > cb,
-                           std::pmr::memory_resource *resource)
-    : m_resource(resource), m_globalTaskQueue(GlobalTaskQueueSize), m_threads(resource) {
-    m_threads.reserve(threadNums);
-    std::latch latch(threadNums);
+nx::Threadpool::Threadpool(int threadNums, std::optional<std::function<void(size_t index)>> cb,
+                           std::pmr::memory_resource* resource)
+    : m_resource(resource), m_workerLoop(threadNums, resource),
+      m_workerThreads(resource),
+      m_threadNums(threadNums),
+      m_threadInit(std::move(cb))
+{
+    m_workerThreads.reserve(m_threadNums);
+    std::latch latch(static_cast<ptrdiff_t>(m_threadNums) + 1);
 
-    for (size_t i = 0; i < threadNums; i++) {
-        m_threads.emplace_back(std::jthread{}, LocalTaskQueueSize, threadNums);
-    }
-
-    for (size_t i = 0; i < threadNums; i++) {
-        m_threads[i].thread = std::jthread{
-            [this,i,&cb,&latch](std::stop_token token) {
-                if (cb) cb->operator()(i);
-                latch.count_down();
+    for (int i = 0; i < m_threadNums; i++)
+    {
+        m_workerThreads.emplace_back(
+            [this,i,&latch]()
+            {
+                if (m_threadInit) m_threadInit->operator()(i);
                 tCurrentThreadToken = i;
-                this->ThreadEntryPoint(token, i);
+                latch.count_down();
+                m_workerLoop.Run(i);
             }
-        };
+        );
     }
 
+    m_esThread = std::jthread{
+        [this,&latch]()
+        {
+            tCurrentThreadToken = static_cast<int>(m_threadNums);
+            latch.count_down();
+            m_es.Run();
+        }
+    };
     latch.wait();
 }
 
 
-nx::Threadpool::~Threadpool() {
-    for (auto &q: m_threads) {
-        if (q.waiting.load()) {
-            q.cv.notify_one();
-        }
-        q.thread.request_stop();
-    }
+nx::Threadpool::~Threadpool()
+{
+    m_workerLoop.Shutdown();
+    m_es.Shutdown();
 }
 
-void nx::Threadpool::PostTask(Task &&task,int threadToken ) {
-    if (threadToken > -1 && threadToken<m_threads.size()) {
-        if (m_threads[threadToken].queue.enqueue(std::move(task))) {
-            return;
-        }
-    }
 
+void nx::Threadpool::Shutdown()
+{
+}
 
-    if (tCurrentPack) {
-        if (tCurrentPack->Product(std::move(task))) {
-            tCurrentPack->cv.notify_one();
-            return;
-        }
-    }
-
-    if (m_globalTaskQueue.try_enqueue(std::move(task))) {
-        for (auto &q: m_threads) {
-            if (q.waiting.load()) {
-                q.cv.notify_one();
-                break;
+std::optional<nx::NxError> nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
+{
+    std::optional<NxError> ret{};
+    std::visit([&]<typename T0>(T0& c)
+    {
+        if constexpr (std::is_same_v<T0, TheadToken>)
+        {
+            if (c == m_threadNums)
+            {
+                ret = m_es.PostTask(std::move(task));
+            }
+            else [[likely]]
+            {
+                ret = m_workerLoop.PostTask(std::move(task), c);
             }
         }
-        return;
-    }
-    throw nx::NxError("Task queue is full");
+        else
+        {
+            if (c == ThreadType::Any)
+            {
+               auto ret1 = m_workerLoop.PostTask(std::move(task));
+                if (ret1)
+                {
+                    ret = m_es.PostTask(std::move(task));
+                }
+            }
+            else if (c == ThreadType::Compute)
+            {
+                ret = m_workerLoop.PostTask(std::move(task));
+            }
+            else
+            {
+                ret = m_es.PostTask(std::move(task));
+            }
+        }
+
+    }, config.m_config);
+    return ret;
 }
 
-int nx::Threadpool::CurrentThreadToken() const noexcept {
+int nx::Threadpool::CurrentThreadToken() noexcept
+{
     return tCurrentThreadToken;
 }
 
-nx::ThreadpoolScheduler nx::Threadpool::get_scheduler() noexcept {
-    return nx::ThreadpoolScheduler{this};
+nx::ThreadpoolScheduler nx::Threadpool::get_scheduler(PostConfig config) noexcept
+{
+    return nx::ThreadpoolScheduler{this, config};
+}
+
+nx::Timer nx::Threadpool::MakeTimer()
+{
+    return Timer{&m_es};
 }
 
 
-void nx::Threadpool::ThreadEntryPoint(std::stop_token &token, size_t threadId) {
-    auto &currentPack = m_threads[threadId];
-    tCurrentPack = &currentPack;
-    auto &localMutex = currentPack.mutex;
-    auto &localCv = currentPack.cv;
-    auto &waiting = currentPack.waiting;
-
-    static auto runTask = [](Task &t) {
-        try {
-            t();
-        } catch (std::exception e) {
-            _logger.Error(std::format("uncaught exception thrown in task: {}", e.what()));
-        }
-    };
-    size_t spinCount = 0;
-    while (!token.stop_requested()) {
-        if (Task task; currentPack.Consume(task)) {
-            runTask(task);
-            spinCount = 0;
-            continue;
-        }
-
-
-        if (Task t; m_globalTaskQueue.try_dequeue(t)) {
-            runTask(t);
-            spinCount = 0;
-            continue;
-        }
-
-        auto steal = [&]() {
-            for (auto &q: m_threads) {
-                if (&q == &currentPack)continue;
-                if (Task task; q.Steal(task, threadId)) {
-                    runTask(task);
-                    spinCount = 0;
-                    return true;
-                }
-            }
-            return false;
-        };
-
-        if (steal()) {
-            continue;
-        }
-
-        spinCount++;
-        if (spinCount >= MaxSpinCount / 2) {
-            std::this_thread::yield();
-        } else if (spinCount >= MaxSpinCount) {
-            std::unique_lock lock(localMutex);
-            waiting.store(true, std::memory_order::acquire);
-            localCv.wait(lock, [&]() {
-                return currentPack.Empty() && !m_globalTaskQueue.size_approx();
-            });
-            waiting.store(false, std::memory_order::acquire);
-        }
-        __Pause();
-    }
+nx::ThreadpoolScheduler::ThreadpoolScheduler(Threadpool* pool, PostConfig threadConf) noexcept
+    : m_threadpool(pool), m_conf(threadConf)
+{
 }
 
-nx::ThreadpoolEvn::ThreadpoolEvn(Threadpool *threadpool) noexcept
-:m_threadpool(threadpool){
-
+nx::ThreadpoolSender nx::ThreadpoolScheduler::schedule() const noexcept
+{
+    return {m_threadpool, m_conf};
 }
 
-nx::ThreadpoolSender::ThreadpoolSender(Threadpool *threadpool,int threadToken) noexcept
-: m_threadpool{threadpool},m_threadToken {threadToken} {}
-
-auto nx::ThreadpoolSender::get_env() const noexcept {
-    return ThreadpoolEvn{m_threadpool};
+nx::ThreadpoolEnv::ThreadpoolEnv(Threadpool* threadpool, PostConfig threadToken) noexcept
+    : m_threadpool(threadpool), m_conf(threadToken)
+{
 }
 
-nx::ThreadpoolScheduler::ThreadpoolScheduler(Threadpool *threadpool)
-    :m_threadpool(threadpool){
+
+nx::ThreadpoolSender::ThreadpoolSender(Threadpool* pool, PostConfig threadToken) noexcept
+    : m_threadpool(pool), m_conf(threadToken)
+{
 }
 
-nx::ThreadpoolSender nx::ThreadpoolScheduler::schedule() noexcept {
-    return nx::ThreadpoolSender{m_threadpool};
+nx::ThreadpoolEnv nx::ThreadpoolSender::get_env() const noexcept
+{
+    return {m_threadpool, m_conf};
 }
 
-nx::ThreadpoolSender nx::ThreadpoolScheduler::schedule(int threadToken) noexcept {
-    return nx::ThreadpoolSender{m_threadpool,threadToken};
+nx::TimeoutSender::TimeoutSender(Threadpool* pool, Timer::Duration timeout) noexcept
+    : m_threadpool(pool), m_timeout(timeout)
+{
+}
+
+nx::TimeoutSender nx::timeout(Threadpool& pool, Timer::Duration timeout)
+{
+    return {&pool, timeout};
 }

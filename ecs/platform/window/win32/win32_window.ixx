@@ -2,10 +2,9 @@ module;
 #include <cstdint>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <functional>
 #include <boost/container/flat_map.hpp>
-#include <memory_resource>
 #include <memory>
+#include <optional>
 export module nx.platform.window.win32;
 export import nx.platform.window;
 import nx.core.types.tstring;
@@ -15,7 +14,9 @@ export namespace nx {
 	public:
 		Win32Window();
 		void* NativeHandle() override;
-		void Initialize()override;
+
+		std::optional<NxError> Initialize() override;
+
 		void Shutdown()override;
 		void Resize(int width, int height) override;
 		void Move(int x, int y) override;

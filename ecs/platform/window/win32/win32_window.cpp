@@ -4,6 +4,7 @@ module;
 #include <windowsx.h>
 #include <cstdint>
 #include <memory>
+#include <optional>
 module nx.platform.window.win32;
 import nx.core.exception;
 import nx.core.memory;
@@ -42,7 +43,7 @@ void* nx::Win32Window::NativeHandle()
 
 
 
-void nx::Win32Window::Initialize()
+std::optional<nx::NxError> nx::Win32Window::Initialize()
 {
     static WndClassHelper wndClassHelper(WndProc);
 
@@ -58,10 +59,11 @@ void nx::Win32Window::Initialize()
         this
     );
 
-    if (!m_window) {
-        throw nx::NxSystemError("Failed to create window.");
+    if (!m_window)
+    {
+        return NxSystemError( "Failed to create window.");
     }
-
+    return std::nullopt;
 }
 
 void nx::Win32Window::Shutdown()

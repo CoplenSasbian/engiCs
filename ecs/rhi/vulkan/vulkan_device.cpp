@@ -1,5 +1,5 @@
 module;
-#include "core/log/log.h"
+#include "log/log.h"
 #include <ranges>
 #include <sstream>
 #include <unordered_map>

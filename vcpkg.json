@@ -9,8 +9,8 @@
     "lua",
     "sol2",
     "boost-container",
-    "boost-lockfree",
-    "libuv"
+    "boost-asio",
+    "boost-system"
   ],
   "version-string": "1.1.1"
 }

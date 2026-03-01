@@ -1,84 +1,63 @@
 
-set(ECS_MODULE
+macro(add_libary_with_deps target_name)
+    add_library(${target_name} STATIC)
 
-        "concurrency/threadpool/threadpool.ixx"
-        "concurrency/utils/pause.ixx"
-        "concurrency/utils/processor_info.ixx"
-        "concurrency/event/event.ixx"
-        "concurrency/future/function_proxy.ixx"
+    target_compile_definitions(${target_name} PRIVATE
+            NOMINMAX
+            UNICODE
+            _UNICODE
+    )
 
+    target_include_directories(
+            ${target_name}
+            PUBLIC
+            ${CMAKE_CURRENT_LIST_DIR}
+    )
 
-        "core/config/console_config.ixx"
-        "core/container/hive.ixx"
-        "core/exception/exception.ixx"
-        "core/log/log.ixx"
-        "core/log/sqlite_sink.ixx"
-        "core/memory/memory.ixx"
-        "core/types/class_def.ixx"
-        "core/types/t_string.ixx"
+    set(all_extra_sources ${ARGN})
 
+    set(module_files "")
+    set(header_files "")
+    set(source_files "")
 
-        "platform/window/window.ixx"
-        "platform/window/eventloop.ixx"
-        "platform/window/win32/win32_window.ixx"
-        "platform/window/win32/win32_event_loop.ixx"
+    foreach (f ${all_extra_sources})
+        if (f MATCHES "\\.(ixx|cppm|mpp)$")
+            list(APPEND module_files ${f})
+        elseif (f MATCHES "\\.(h|hpp|hxx)$")
+            list(APPEND header_files ${f})
+        else ()
+            list(APPEND source_files ${f})
+        endif ()
+    endforeach ()
 
-        "core/utils/single.ixx"
-        "core/utils/emitter.ixx"
-        "core/utils/function_traits.ixx"
+    if (source_files)
+        target_sources(${target_name}
+                PRIVATE ${source_files}
+                PUBLIC ${header_files}
+        )
+    endif ()
 
+    if (module_files)
+        target_sources(${target_name} PUBLIC
+                FILE_SET cxx_modules TYPE CXX_MODULES
+                BASE_DIRS ..
+                FILES ${module_files}
+        )
 
-        "resource/actor.ixx"
+    endif ()
 
-        "rhi/device.ixx"
-        "rhi/queue.ixx"
-        "rhi/surface.ixx"
-        "rhi/shader.ixx"
-
-        "rhi/vulkan/config.ixx"
-        "rhi/vulkan/vulkan_allocator.ixx"
-        "rhi/vulkan/vulkan_device.ixx"
-        "rhi/vulkan/vulkan_queue.ixx"
-        "rhi/vulkan/vulkan_shader.ixx"
-
-        "game/app/app.ixx"
-        "game/context/context.ixx"
-        "game/render_window/render_window.ixx"
-
-
-)
-
-set(ECS_SOURCE
-
-        "core/container/concurrent_queue.h"
-        "concurrency/threadpool/threadpool.cpp"
-        "concurrency/utils/pause.cpp"
-        "concurrency/utils/processor_info.cpp"
-        "concurrency/event/event.cpp"
-
-        "core/config/console_config.cpp"
-        "core/exception/exception.cpp"
-        "core/log/log.h"
-        "core/log/log.cpp"
-        "core/log/sqlite_sink.cpp"
-        "core/memory/memory.cpp"
-
-        "platform/window/win32/win32_window.cpp"
-        "platform/window/window.cpp"
-        "platform/window/eventloop.cpp"
-        "platform/window/win32/win32_event_loop.cpp"
-
-        "rhi/vulkan/config.cpp"
-        "rhi/vulkan/vulkan_allocator.cpp"
-        "rhi/vulkan/vulkan_device.cpp"
-        "rhi/vulkan/vulkan_queue.cpp"
-        "rhi/vulkan/vulkan_shader.cpp"
+    set_target_properties(${target_name} PROPERTIES
+            CXX_STANDARD 23
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+            CXX_SCAN_FOR_MODULES ON
+    )
+endmacro()
 
 
-        "game/app/app.cpp"
-        "game/context/context.cpp"
-        "game/render_window/render_window.cpp"
-
-        "ecs.cpp"
-
-)
+add_subdirectory(core)
+add_subdirectory(concurrency)
+add_subdirectory(platform)
+add_subdirectory(rhi)
+add_subdirectory(resource)
+add_subdirectory(game)

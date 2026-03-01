@@ -12,6 +12,7 @@ export namespace nx {
 		NxError(std::string_view error, std::stacktrace trace = std::stacktrace::current());
 		NxError(const NxError&) = default;
 		NxError(NxError&&) = default;
+		NxError& operator=(const NxError&) = default;
 
 		char const* what() const override;
 	private:

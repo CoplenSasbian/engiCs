@@ -1,8 +1,6 @@
 module;
 #include <format>
-#include <print>
-
-#include "core/log/log.h"
+#include "log/log.h"
 
 module game.app;
 import nx.core.log;

@@ -1,7 +1,6 @@
 module;
-#include <memory>
-#include <functional>
 #include <cstdint>
+#include <optional>
 export module nx.platform.window;
 export import nx.platform.window.eventloop;
 import nx.core.types;
@@ -184,7 +183,7 @@ export namespace nx {
         ~IWindow() override = default;
 
         virtual void* NativeHandle() = 0;
-        void Initialize() override = 0;
+        std::optional<NxError> Initialize() override = 0;
         void Shutdown() override = 0;
         virtual void Resize(int width, int height) = 0;
         virtual void Move(int x, int y) = 0;

@@ -7,8 +7,10 @@ module nx.core.memory;
 
 
 
+
 void* nx::CommonResource::do_allocate(size_t bytes, size_t alignment)
 {
+
     return mi_malloc_aligned(bytes, alignment);
 }
 
@@ -28,6 +30,7 @@ std::pmr::memory_resource* nx::GetCommandResource()
 
 void nx::InitResource()
 {
+
     std::pmr::set_default_resource(GetCommandResource());
 }
 

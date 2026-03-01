@@ -1,11 +1,13 @@
+module;
+#include <optional>
 module game.context;
 
 void game::Context::PreInitialize() {
-	// m_tp = MakeWinrtPool();
 }
 
-void game::Context::Initialize()
+std::optional<nx::NxError> game::Context::Initialize()
 {
+	return std::nullopt;
 }
 
 void game::Context::Shutdown()

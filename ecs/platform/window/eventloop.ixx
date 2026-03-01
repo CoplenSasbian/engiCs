@@ -1,6 +1,7 @@
 module;
 #include <memory>
 #include <functional>
+#include <optional>
 
 export module nx.platform.window.eventloop;
 import nx.core.types;
@@ -8,7 +9,7 @@ import nx.core.types;
 export namespace nx {
 	class IEventLoop :public IComponent {
 	public:
-		virtual void Initialize() = 0;
+		virtual std::optional<NxError> Initialize() = 0;
 		virtual void Shutdown() = 0;
 		virtual void PoolEvents() = 0;
 

@@ -1,77 +1,33 @@
 module;
 #include <functional>
-#include <thread>
-#include <condition_variable>
-#include "core/container/concurrent_queue.h"
+
+
 #include "stdexec/execution.hpp"
+
 
 export module nx.concurrency.threadpool;
 import nx.core.memory;
 import nx.core.types;
+import nx.concurrency.run_loop.worker_loop;
+import nx.concurrency.run_loop.event_source;
 
-namespace std::execution {
+namespace std::execution
+{
     using namespace stdexec;
 }
 
-namespace nx {
+namespace nx
+{
     using Task = std::function<void()>;
-    using TaskQueue = moodycamel::ConcurrentQueue<Task>;
 
-
-    struct ThreadPack : NoneCopyable {
-        template<class ThEp>
-        ThreadPack(ThEp &&ep, std::size_t queueSize, size_t totalThreadSize)
-            : totalThreadSize(totalThreadSize),
-              thread(std::forward<ThEp>(ep)),
-              queue(queueSize),
-              producerToken(queue) {
-            consumerTokens.reserve(totalThreadSize);
-            for (std::size_t index = 0; index < totalThreadSize; index++) {
-                consumerTokens.emplace_back(queue);
-            }
-        }
-
-        ThreadPack(ThreadPack &&other) noexcept
-            : totalThreadSize(other.totalThreadSize),
-              thread(std::move(other.thread)),
-              queue(std::move(other.queue)),
-              consumerTokens(std::move(other.consumerTokens)) {
-        }
-
-
-        bool Product(Task &&task) {
-            return queue.enqueue(producerToken, std::move(task));
-        }
-
-        bool Consume(Task &task) {
-            return queue.try_dequeue_from_producer(producerToken, task);
-        }
-
-        bool Steal(Task &task, size_t threadId) {
-            return queue.try_dequeue(consumerTokens[threadId], task);
-        }
-
-        bool Empty() const {
-            return !queue.size_approx();
-        }
-
-        size_t totalThreadSize;
-        TaskQueue queue;
-        std::jthread thread;
-        TaskQueue::producer_token_t producerToken{queue};
-
-        std::vector<TaskQueue::consumer_token_t> consumerTokens{};
-        std::mutex mutex;
-        std::condition_variable cv;
-        std::atomic_bool waiting;
-    };
-
-
+    export
+    struct Threadpool;
     export
     class ThreadpoolScheduler;
 
     export
-    enum ThreadType {
+    enum ThreadType
+    {
         Unknown = -1,
         Any = Unknown,
 
@@ -80,184 +36,277 @@ namespace nx {
     };
 
 
-    export
-    struct Threadpool : NoneCopyable {
-        explicit Threadpool(std::size_t threadNums,
-                            std::optional<std::function<void(std::size_t index)> > = std::nullopt,
-                            std::pmr::memory_resource *resource = std::pmr::get_default_resource());
+    struct PostConfig
+    {
+        using TheadToken = int;
+        using ConfigType = std::variant<int, ThreadType>;
 
-        Threadpool(Threadpool &&) noexcept = default;
-
-        ~Threadpool();
-
-        void PostTask(Task &&task, int threadToken = -1);
-        void PostTask(Task &&task, ThreadType type = Async);
-
-        [[nodiscard]] int CurrentThreadToken() const noexcept;
-
-        [[nodiscard]] ThreadpoolScheduler get_scheduler() noexcept;
+        constexpr static PostConfig thread(TheadToken token)
+        {
+            return PostConfig(token);
+        }
 
 
-        struct SchedulerAwaitable {
-            Threadpool *m_threadpool;
+        constexpr static PostConfig group(ThreadType type)
+        {
+            return PostConfig(type);
+        }
 
-            SchedulerAwaitable(Threadpool *pool) : m_threadpool(pool) {
+
+        constexpr PostConfig(PostConfig&&) noexcept = default;
+        constexpr PostConfig(const PostConfig&) noexcept = default;
+
+
+        constexpr bool operator==(const PostConfig& rhs) const = default;
+
+    private:
+        friend struct Threadpool;
+
+        constexpr PostConfig(const ConfigType config) : m_config(config)
+        {
+        }
+
+        ConfigType m_config;
+    };
+
+
+    struct Threadpool : NoneCopyable
+    {
+        using TheadToken = int;
+        using enum ThreadType;
+
+
+        static constexpr PostConfig ComputeThreads = PostConfig::group(Compute);
+        static constexpr PostConfig AsyncThreads = PostConfig::group(Async);
+        static constexpr PostConfig AnyThread = PostConfig::thread(-1);
+
+        explicit Threadpool(int threadNums,
+                            std::optional<std::function<void(std::size_t index)>> = std::nullopt,
+                            std::pmr::memory_resource* resource = std::pmr::get_default_resource());
+
+        Threadpool(Threadpool&&) noexcept = delete;
+        ~Threadpool() ;
+        void Shutdown() ;
+
+        std::optional<NxError> PostTask(Task&& task, PostConfig config = AnyThread) noexcept;
+
+        static [[nodiscard]] int CurrentThreadToken() noexcept;
+
+        [[nodiscard]] ThreadpoolScheduler get_scheduler(PostConfig = AnyThread) noexcept;
+
+        [[nodiscard]] Timer MakeTimer();
+
+        struct SchedulerAwaitable
+        {
+            Threadpool* m_threadpool;
+
+            SchedulerAwaitable(Threadpool* pool) : m_threadpool(pool)
+            {
             }
 
-            bool await_ready() const noexcept {
+            bool await_ready() const noexcept
+            {
                 return false;
             }
 
-            void await_suspend(std::coroutine_handle<>h) const noexcept {
-                m_threadpool->PostTask([h] {
+            void await_suspend(std::coroutine_handle<> h) const noexcept
+            {
+                m_threadpool->PostTask([h]
+                {
                     h.resume();
                 });
             }
-            void await_resume() const noexcept {
-            }
 
+            void await_resume() const noexcept
+            {
+            }
         };
 
-        [[nodiscard]] SchedulerAwaitable AwaitScheduler() {
+        [[nodiscard]] SchedulerAwaitable AwaitScheduler()
+        {
             return SchedulerAwaitable{this};
         }
 
     private:
-        void ThreadEntryPoint(std::stop_token &, size_t);
-
-        std::pmr::memory_resource *m_resource;
-        TaskQueue m_globalTaskQueue;
-
-        std::pmr::vector<ThreadPack> m_threads;
+        std::pmr::memory_resource* m_resource;
+        WorkerLoop m_workerLoop;
+        std::pmr::vector<std::jthread> m_workerThreads;
+        size_t m_threadNums;
+        EventLoop m_es;
+        std::jthread m_esThread;
+        std::optional<std::function<void(size_t index)>> m_threadInit;
     };
+
 
     /*********************************** execution ********************************************/
 
+    export class ThreadpoolEnv;
+    export class ThreadpoolSender;
     export
-    class ThreadpoolScheduler;
+    template <std::execution::receiver R>
+    class ThreadpoolOperationState;
 
-    export
-    class GetCurrentThreadTokenT {
+
+    class ThreadpoolScheduler
+    {
+    public:
+        ThreadpoolScheduler(Threadpool* pool, PostConfig threadToken) noexcept;
+
+        ThreadpoolScheduler(const ThreadpoolScheduler&) noexcept = default;
+        ThreadpoolScheduler(ThreadpoolScheduler&&) noexcept = default;
+        [[nodiscard]] ThreadpoolSender schedule() const noexcept;
+
+        bool operator==(const ThreadpoolScheduler& rhs) const noexcept = default;
+
+    private:
+        Threadpool* m_threadpool;
+        PostConfig m_conf;
     };
 
-    export
-    constexpr GetCurrentThreadTokenT GetCurrentThreadToken{};
 
-    export
-    template<std::execution::receiver R>
-    class ThreadpoolOp {
+    class ThreadpoolEnv
+    {
     public:
-        explicit ThreadpoolOp(Threadpool *threadpool, std::add_rvalue_reference_t<R> r, int threadToken) noexcept
-            : m_receiver(std::move(r)), m_threadpool{threadpool}, m_threadToken(threadToken) {
-        }
+        ThreadpoolEnv(Threadpool* threadpool, PostConfig threadToken) noexcept;
+        ThreadpoolEnv(ThreadpoolEnv&&) noexcept = default;
+        ThreadpoolEnv(const ThreadpoolEnv&) noexcept = default;
 
-        ThreadpoolOp(ThreadpoolOp &&) noexcept = default;
+    private:
+        Threadpool* m_threadpool;
+        PostConfig m_conf;
+    };
 
-        void start() noexcept {
-            try {
-                if (std::execution::get_stop_token(std::execution::get_env(m_receiver)).stop_requested()) {
+
+    template <std::execution::receiver R>
+    class ThreadpoolOperationState
+    {
+    public:
+        ThreadpoolOperationState(R&& receiver, Threadpool* pool, PostConfig threadToken) noexcept
+            : m_receiver(std::move(receiver)), m_threadpool(pool), m_conf(threadToken)
+        {
+        };
+
+        void start() noexcept
+        {
+                if (std::execution::get_stop_token(std::execution::get_env(m_receiver)).stop_requested())
+                {
                     std::execution::set_stopped(std::move(m_receiver));
                     return;
                 }
-                m_threadpool->PostTask([this] {
-                    std::execution::set_value(std::move(m_receiver));
-                }, m_threadToken);
-            } catch (...) {
-                std::execution::set_error(std::move(m_receiver), std::current_exception());
+                if (auto ex = m_threadpool->PostTask([this]{std::execution::set_value(std::move(m_receiver));});ex)
+                {
+                    std::execution::set_error(std::move(m_receiver), std::current_exception());
+                }
+        }
+
+    private:
+        R m_receiver;
+        Threadpool* m_threadpool;
+        PostConfig m_conf;
+    };
+
+
+    class ThreadpoolSender : public std::execution::sender_t
+    {
+    public:
+        ThreadpoolSender(Threadpool* pool, PostConfig threadToken) noexcept;
+        ThreadpoolSender(const ThreadpoolSender&) noexcept = default;
+        ThreadpoolSender(ThreadpoolSender&&) noexcept = default;
+        bool operator==(const ThreadpoolSender& rhs) const noexcept = default;
+
+        template <std::execution::receiver R>
+        ThreadpoolOperationState<R> connect(R&& receiver) noexcept
+        {
+            return ThreadpoolOperationState<R>{std::forward<R>(receiver), m_threadpool, m_conf};
+        }
+
+        [[nodiscard]] ThreadpoolEnv get_env() const noexcept;
+
+        static auto get_completion_signatures(const auto& env) noexcept
+        {
+            return std::execution::completion_signatures<
+                std::execution::set_error_t(std::exception_ptr),
+                std::execution::set_value_t(),
+                std::execution::set_stopped_t()
+            >{};
+        }
+
+    private:
+        Threadpool* m_threadpool;
+        PostConfig m_conf;
+    };
+
+    /********************************************timer***********************************************/
+    template<std::execution::receiver R>
+    class TimeoutOperationState
+    {
+    public:
+        TimeoutOperationState(R&& receiver, Threadpool* pool, Timer::Duration timeout)
+            : m_receiver(std::move(receiver)), m_threadpool(pool), m_timeout(timeout),m_timer(m_threadpool->MakeTimer())
+        {}
+
+
+        void start() noexcept
+        {
+
+            m_timer.SetCallback([this]
+            {
+                std::execution::set_value(std::move(m_receiver));
+            });
+            auto ex = m_timer.Start(m_timeout);
+            if (ex)
+            {
+                std::execution::set_error(std::move(m_receiver), std::make_exception_ptr(ex.value()));
             }
         }
 
     private:
         R m_receiver;
-        Threadpool *m_threadpool;
-        int m_threadToken;
+        Threadpool* m_threadpool;
+        Timer::Duration m_timeout;
+        Timer m_timer;
     };
 
-    export
-    class ThreadpoolEvn {
+    class TimeoutSender:public std::execution::sender_t
+
+    {
     public:
-        ThreadpoolEvn(Threadpool *threadpool) noexcept;
+        TimeoutSender(Threadpool* pool, Timer::Duration timeout) noexcept;
 
-        friend ThreadpoolScheduler tag_invoke(std::execution::get_scheduler_t, const ThreadpoolEvn &);
-
-        friend int tag_invoke(GetCurrentThreadTokenT, const ThreadpoolEvn &self);
-
-    private:
-        Threadpool *m_threadpool;
-    };
+        TimeoutSender(const TimeoutSender&) noexcept = delete;
+        TimeoutSender(TimeoutSender&&) noexcept = default;
 
 
-    export
-    class ThreadpoolSender :public std::execution::sender_t{
-    public:
-        using is_sender = void;
-
-        explicit ThreadpoolSender(Threadpool *threadpool, int threadToken = -1) noexcept;
-
-        ThreadpoolSender(ThreadpoolSender &&) noexcept = default;
-
-        ThreadpoolSender(const ThreadpoolSender &) noexcept = default;
-        ThreadpoolSender &operator=(ThreadpoolSender &&) noexcept = default;
-
-        ~ThreadpoolSender() = default;
-
-
-        bool operator==(const ThreadpoolSender &other) const noexcept {
-            return m_threadpool == other.m_threadpool;
-        }
-
-        auto constexpr  get_completion_signatures(const auto& evn) const noexcept {
+        auto get_completion_signatures(auto) const noexcept
+        {
             return std::execution::completion_signatures<
                 std::execution::set_value_t(),
-                std::execution::set_error_t(std::exception_ptr),
-                std::execution::set_stopped_t()
+                std::execution::set_error_t(std::exception_ptr)
             >{};
         }
 
-        [[nodiscard]] auto get_env() const noexcept;
-
-
-        template<std::execution::receiver R>
-        ThreadpoolOp<R> connect(std::add_rvalue_reference_t<R> r) const noexcept {
-            return ThreadpoolOp<R>{m_threadpool, std::move(r), m_threadToken};
+        bool operator==(const TimeoutSender& rhs) const noexcept
+        {
+            return m_threadpool == rhs.m_threadpool
+            && m_timeout == rhs.m_timeout;
         }
+
+        template <std::execution::receiver R>
+        TimeoutOperationState<R> connect(R&& receiver) noexcept
+        {
+            return {std::forward<R>(receiver), m_threadpool, m_timeout};
+        }
+
 
     private:
-        Threadpool *m_threadpool;
-        int m_threadToken;
+        friend struct Awaitable;
+        Threadpool* m_threadpool;
+        Timer::Duration m_timeout;
     };
+
+
+
 
     export
-    class ThreadpoolScheduler {
-        Threadpool *m_threadpool;
-
-    public:
-        explicit ThreadpoolScheduler(Threadpool *threadpool);
-
-        ThreadpoolScheduler(ThreadpoolScheduler &&) = default;
-
-        ThreadpoolScheduler &operator=(ThreadpoolScheduler &&) = default;
-
-        ThreadpoolScheduler(const ThreadpoolScheduler &) = default;
-
-        ThreadpoolScheduler &operator=(const ThreadpoolScheduler &) = default;
-
-        bool operator==(const ThreadpoolScheduler &other) const {
-            return m_threadpool == other.m_threadpool;
-        }
-
-         ThreadpoolSender schedule() noexcept;
-
-        ThreadpoolSender schedule(int threadToken) noexcept;
-
-        ~ThreadpoolScheduler() = default;
-    };
-
-    ThreadpoolScheduler tag_invoke(std::execution::get_scheduler_t, const ThreadpoolEvn &evn) {
-        return ThreadpoolScheduler{evn.m_threadpool};
-    }
-
-    int tag_invoke(GetCurrentThreadTokenT, const ThreadpoolEvn &self) {
-        return self.m_threadpool->CurrentThreadToken();
-    }
+    TimeoutSender timeout(Threadpool&  pool,Timer::Duration  timeout);
 }

@@ -1,5 +1,7 @@
 
 
 set(BUILD_TESTING OFF)
-add_subdirectory("nvhpc-24.09")
+set(STDEXEC_BUILD_EXAMPLES OFF)
+add_subdirectory("stdexec")
+#add_subdirectory("asio")
 
