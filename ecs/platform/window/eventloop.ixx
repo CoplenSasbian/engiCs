@@ -5,11 +5,12 @@ module;
 
 export module nx.platform.window.eventloop;
 import nx.core.types;
+import nx.platform.error_code;
 
 export namespace nx {
 	class IEventLoop :public IComponent {
 	public:
-		virtual std::optional<NxError> Initialize() = 0;
+		virtual Error Initialize() = 0;
 		virtual void Shutdown() = 0;
 		virtual void PoolEvents() = 0;
 

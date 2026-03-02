@@ -8,14 +8,14 @@ module;
 #include "exec/env.hpp"
 
 module nx.concurrency.threadpool;
-import nx.core.exception;
+import nx.concurrency.error_code;
 import nx.concurrency.utils.pause;
 import nx.core.log;
 import nx.core.memory;
 LOGGER(thread_pool);
 
 
-thread_local int tCurrentThreadToken = -1;
+thread_local nx::Threadpool::TheadToken tCurrentThreadToken = -1;
 
 
 nx::Threadpool::Threadpool(int threadNums, std::optional<std::function<void(size_t index)>> cb,
@@ -64,49 +64,69 @@ void nx::Threadpool::Shutdown()
 {
 }
 
-std::optional<nx::NxError> nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
+nx::Error nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
 {
-    std::optional<NxError> ret{};
-    std::visit([&]<typename T0>(T0& c)
+    nx::Error ret = NoError;
+    if (config.is_any())
     {
-        if constexpr (std::is_same_v<T0, TheadToken>)
+        ret = m_workerLoop.PostTask(std::move(task), -1);
+        if (ret) ret = m_es.PostTask(std::move(task));
+    }
+    else if (config.is_thread_token())
+    {
+        const auto token = config.get_thread_token_uncheck();
+        if (token < m_threadNums)
         {
-            if (c == m_threadNums)
-            {
-                ret = m_es.PostTask(std::move(task));
-            }
-            else [[likely]]
-            {
-                ret = m_workerLoop.PostTask(std::move(task), c);
-            }
+            ret = m_workerLoop.PostTask(std::move(task), token);
+        }
+        else if (token == static_cast<int>(m_threadNums))
+        {
+            ret = m_es.PostTask(std::move(task));
         }
         else
         {
-            if (c == ThreadType::Any)
-            {
-               auto ret1 = m_workerLoop.PostTask(std::move(task));
-                if (ret1)
-                {
-                    ret = m_es.PostTask(std::move(task));
-                }
-            }
-            else if (c == ThreadType::Compute)
-            {
-                ret = m_workerLoop.PostTask(std::move(task));
-            }
-            else
-            {
-                ret = m_es.PostTask(std::move(task));
-            }
+            ret = make_error_code(ConcurrencyErrc::InvalidThreadToken);
         }
+    }
+    else
+    {
+        auto type = config.get_thread_type_uncheck();
+        switch (type)
+        {
+        case ThreadType::Compute:
+            ret = m_workerLoop.PostTask(std::move(task), GetAnyThreadToken(type));
+            break;
+        case ThreadType::Async:
+            ret = m_es.PostTask(std::move(task));
+            break;
+        default:
+            ret = make_error_code(ConcurrencyErrc::InvalidThreadType);
+        }
+    }
 
-    }, config.m_config);
     return ret;
 }
 
 int nx::Threadpool::CurrentThreadToken() noexcept
 {
     return tCurrentThreadToken;
+}
+
+nx::Threadpool::TheadToken nx::Threadpool::GetAnyThreadToken(ThreadType type) const noexcept
+{
+    static std::atomic<TheadToken> ret = 0;
+
+    switch (type)
+    {
+    case Any:
+        return ret++ % (static_cast<TheadToken>(m_threadNums) + 1);
+    case Compute:
+        return ret++ % static_cast<TheadToken>(m_threadNums);
+    case Async:
+        return static_cast<TheadToken>(m_threadNums);
+    default:
+        return -1;
+    }
 }
 
 nx::ThreadpoolScheduler nx::Threadpool::get_scheduler(PostConfig config) noexcept
@@ -139,6 +159,11 @@ nx::ThreadpoolEnv::ThreadpoolEnv(Threadpool* threadpool, PostConfig threadToken)
 nx::ThreadpoolSender::ThreadpoolSender(Threadpool* pool, PostConfig threadToken) noexcept
     : m_threadpool(pool), m_conf(threadToken)
 {
+}
+
+bool nx::ThreadpoolSender::operator==(const ThreadpoolSender& rhs) const noexcept
+{
+    return m_threadpool == rhs.m_threadpool && m_conf == rhs.m_conf;
 }
 
 nx::ThreadpoolEnv nx::ThreadpoolSender::get_env() const noexcept

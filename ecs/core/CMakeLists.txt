@@ -1,4 +1,5 @@
 set(esc_lib_core_sources
+        "error_code/error_code.ixx"
         "config/console_config.ixx"
         "container/hive.ixx"
         "exception/exception.ixx"

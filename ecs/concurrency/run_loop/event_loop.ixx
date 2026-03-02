@@ -5,6 +5,7 @@ module;
 export module nx.concurrency.run_loop.event_source;
 import nx.core.exception;
 import nx.core.types;
+import nx.concurrency.error_code;
 namespace nx
 {
     using Task = std::function<void()>;
@@ -20,7 +21,7 @@ namespace nx
         void Shutdown() noexcept ;
         void Run() noexcept;
         void RunOnce() noexcept;
-        std::optional<NxError> PostTask(Task&&) noexcept;
+        Error PostTask(Task&&) noexcept;
         ~EventLoop() noexcept ;
     private:
         struct IMPL;
@@ -39,7 +40,7 @@ namespace nx
         Timer(Timer&&)noexcept =default;
         Timer& operator=(Timer&&)noexcept =default;
         void SetCallback(Task&&) noexcept;
-        std::optional<NxError> Start(Duration delay, Duration repeat = Duration(0)) noexcept;
+        Error Start(Duration delay, Duration repeat = Duration(0)) noexcept;
         void Run() const noexcept;
         void Stop() noexcept;
         void Shutdown() noexcept ;

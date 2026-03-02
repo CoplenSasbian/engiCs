@@ -6,11 +6,11 @@ module;
 #include <memory>
 #include <optional>
 module nx.platform.window.win32;
-import nx.core.exception;
 import nx.core.memory;
+import nx.platform.error_code;
 
 struct WndClassHelper {
-    explicit WndClassHelper( WNDPROC wndProc)
+    explicit  WndClassHelper( WNDPROC wndProc)
    {
       WNDCLASSEX wndcex = {};
       wndcex.cbSize = sizeof(WNDCLASSEX);
@@ -22,11 +22,11 @@ struct WndClassHelper {
       wndcex.lpszClassName = TEXT("Win32Window");
 
       if (!RegisterClassEx(&wndcex)) {
-        throw nx::NxSystemError( "Failed to register window class.");
+        erroc = nx::make_system_error();
       }
    }
 
-
+    nx::Error erroc;
 };
 
 
@@ -43,9 +43,11 @@ void* nx::Win32Window::NativeHandle()
 
 
 
-std::optional<nx::NxError> nx::Win32Window::Initialize()
+nx::Error nx::Win32Window::Initialize()
 {
     static WndClassHelper wndClassHelper(WndProc);
+
+    if (wndClassHelper.erroc) return  wndClassHelper.erroc;
 
     m_window = CreateWindowEx(
         WS_EX_OVERLAPPEDWINDOW,
@@ -61,9 +63,9 @@ std::optional<nx::NxError> nx::Win32Window::Initialize()
 
     if (!m_window)
     {
-        return NxSystemError( "Failed to create window.");
+        return make_system_error();
     }
-    return std::nullopt;
+    return NoError;
 }
 
 void nx::Win32Window::Shutdown()

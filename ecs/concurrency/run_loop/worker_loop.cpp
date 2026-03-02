@@ -4,6 +4,7 @@ module;
 #include "log/log.h"
 #include "container/concurrent_queue.h"
 module nx.concurrency.run_loop.worker_loop;
+import nx.concurrency.error_code;
 import nx.core.log;
 import nx.concurrency.utils.pause;
 import nx.core.exception;
@@ -11,11 +12,13 @@ import nx.core.exception;
 LOGGER(worker_loop);
 
 
-thread_local nx::ThreadPack * tThreadPack = nullptr;
 
 constexpr size_t GlobalTaskQueueSize = 1024;
+
 constexpr size_t LocalTaskQueueSize = 128;
-constexpr size_t MaxSpinCount = 20;
+constexpr size_t MaxSpinTimes = 10000 ;
+
+thread_local int tCurrentIndex = -1;
 
 
 nx::WorkerLoop::WorkerLoop(size_t threadSize, std::pmr::memory_resource* resource)
@@ -34,8 +37,8 @@ nx::WorkerLoop::WorkerLoop(size_t threadSize, std::pmr::memory_resource* resourc
 
 void nx::WorkerLoop::Run(int threadId)
 {
+    tCurrentIndex = threadId;
     auto& currentPack = m_threads[threadId];
-    tThreadPack = &currentPack;
     auto& localMutex = currentPack.mutex;
     auto& localCv = currentPack.cv;
     auto& waiting = currentPack.waiting;
@@ -94,11 +97,11 @@ void nx::WorkerLoop::Run(int threadId)
         }
 
         spinCount++;
-        if (spinCount >= MaxSpinCount / 2)
+        if (spinCount >= MaxSpinTimes / 2)
         {
             std::this_thread::yield();
         }
-        else if (spinCount >= MaxSpinCount)
+        else if (spinCount >= MaxSpinTimes)
         {
             std::unique_lock lock(localMutex);
             waiting.store(true, std::memory_order::acquire);
@@ -124,24 +127,30 @@ void nx::WorkerLoop::Shutdown()
 
 }
 
- std::optional<nx::NxError> nx::WorkerLoop::PostTask(Task&& task, int threadId) noexcept
+ nx::Error nx::WorkerLoop::PostTask(Task&& task, int threadId) noexcept
 {
-    ThreadPack* localPack = tThreadPack;
     if (threadId >= 0 && threadId < m_threads.size())
     {
-        localPack = &m_threads[threadId];
+        if (tCurrentIndex == threadId)
+        {
+            if (m_threads[threadId].Product(std::move(task)))return NoError;
+        }else
+        {
+            if (m_threads[threadId].ProductFromOtherThread(std::move(task)))return NoError;
+        }
     }
 
-    if (localPack)
-    {
-        if (localPack->Product(std::move(task)))
-            return std::nullopt;
-    }
 
     if (m_globalTaskQueue.enqueue(std::move(task)))
-        return std::nullopt;
+    {
+        for (auto &t : m_threads)
+        {
+            t.Notify();
+        }
+        return NoError;
+    }
 
-    return  NxError("task post failed");
+    return  nx::make_error_code(ConcurrencyErrc::QueueFull);
 }
 
 nx::WorkerLoop::~WorkerLoop()

@@ -2,7 +2,7 @@ module;
 #include <boost/asio.hpp>
 #include "log/log.h"
 module nx.concurrency.run_loop.event_source;
-
+import nx.concurrency.error_code;
 import nx.core.log;
 LOGGER(event_loop);
 
@@ -41,15 +41,15 @@ void nx::EventLoop::RunOnce() noexcept
     m_impl->m_ctx.run_one();
 }
 
-std::optional<nx::NxError> nx::EventLoop::PostTask(Task&& task) noexcept
+nx::Error nx::EventLoop::PostTask(Task&& task) noexcept
 {
    if (m_impl->m_ctx.stopped())
    {
-       return NxError{"event loop is stopped"};
+       return make_error_code(ConcurrencyErrc::LoopStopped);
    }
 
     boost::asio::post(m_impl->m_ctx, std::move(task));
-    return std::nullopt;
+    return NoError;
 }
 
 nx::EventLoop::~EventLoop() noexcept
@@ -84,7 +84,7 @@ void nx::Timer::SetCallback(Task&& cb) noexcept
     m_cb = std::move(cb);
 }
 
-std::optional<nx::NxError> nx::Timer::Start(Duration delay, Duration repeat) noexcept
+nx::Error nx::Timer::Start(Duration delay, Duration repeat) noexcept
 {
     m_impl->m_timer.expires_after(delay);
     struct TimerCallback
@@ -109,7 +109,7 @@ std::optional<nx::NxError> nx::Timer::Start(Duration delay, Duration repeat) noe
 
     m_impl->m_timer.async_wait(TimerCallback{this,repeat});
 
-    return std::nullopt;
+    return NoError;
 }
 
 void nx::Timer::Run() const noexcept

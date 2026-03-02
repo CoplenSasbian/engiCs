@@ -12,9 +12,9 @@ nx::Win32EventLoop::Win32EventLoop()
    OnIdle = []() {};
 }
 
-std::optional<nx::NxError> nx::Win32EventLoop::Initialize()
+nx::Error nx::Win32EventLoop::Initialize()
 {
-    return std::nullopt;
+    return NoError;
 }
 
 void nx::Win32EventLoop::PoolEvents()

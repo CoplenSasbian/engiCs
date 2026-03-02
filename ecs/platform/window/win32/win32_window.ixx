@@ -15,7 +15,7 @@ export namespace nx {
 		Win32Window();
 		void* NativeHandle() override;
 
-		std::optional<NxError> Initialize() override;
+		Error Initialize() override;
 
 		void Shutdown()override;
 		void Resize(int width, int height) override;

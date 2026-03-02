@@ -95,7 +95,7 @@ namespace nx {
 					BLOCK_OUTPUT(" is not support and will be skip\n");
 				}
 			}
-			END_DEBUG_BLOCK(Debug);
+			END_DEBUG_BLOCK( Level::Debug);
 
 		}
 		{

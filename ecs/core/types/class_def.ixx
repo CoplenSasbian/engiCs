@@ -1,7 +1,8 @@
 module;
 #include <optional>
+#include <system_error>
 export module nx.core.types;
-export  import nx.core.exception;
+import nx.core.error_code;
 
 export namespace nx {
 	struct ImMoveable {
@@ -31,7 +32,7 @@ export namespace nx {
 	public:
 
 		virtual void PreInitialize() {}
-		virtual std::optional<NxError> Initialize() = 0;
+		virtual Error Initialize() = 0;
 		virtual void Shutdown() = 0;
 
 		virtual ~IComponent() = default;

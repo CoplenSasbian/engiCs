@@ -1,4 +1,5 @@
 set(esc_lib_concurrency_sources
+        "erroe_code/error_code.ixx"
         "threadpool/threadpool.ixx"
         "utils/pause.ixx"
         "utils/processor_info.ixx"

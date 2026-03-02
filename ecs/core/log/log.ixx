@@ -10,7 +10,7 @@ export namespace nx
 	void InitializeLogSystem();
 	void ShutdownLogSystem();
 
-	enum Level
+	enum class Level
 	{
 		Trace,
 		Debug,

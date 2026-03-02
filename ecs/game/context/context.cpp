@@ -1,13 +1,13 @@
 module;
 #include <optional>
 module game.context;
-
+import game.error_code;
 void game::Context::PreInitialize() {
 }
 
-std::optional<nx::NxError> game::Context::Initialize()
+nx::Error game::Context::Initialize()
 {
-	return std::nullopt;
+	return NoError;
 }
 
 void game::Context::Shutdown()

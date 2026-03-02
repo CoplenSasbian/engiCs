@@ -1,5 +1,6 @@
 
 set(esc_lib_game_sources
+        "error_code/error_code.ixx"
         "app/app.ixx"
         "context/context.ixx"
         "render_window/render_window.ixx"

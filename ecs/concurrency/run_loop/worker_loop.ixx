@@ -3,6 +3,7 @@ module;
 #include <condition_variable>
 #include "container/concurrent_queue.h"
 export module nx.concurrency.run_loop.worker_loop;
+import nx.concurrency.error_code;
 import nx.core.types;
 
 namespace nx
@@ -34,10 +35,26 @@ namespace nx
         {
         }
 
+        void Notify()
+        {
+            if ( waiting)
+            {
+                cv.notify_one();
+            }
+        }
+
 
         bool Product(Task&& task)
         {
-            return queue.enqueue(producerToken, std::move(task));
+            auto  success = queue.enqueue(producerToken, std::move(task));
+            if ( success) Notify();
+            return  success;
+        }
+        bool ProductFromOtherThread(Task&&  task)
+        {
+            auto  success = queue.enqueue(producerToken, std::move(task));
+            if ( success) Notify();
+            return  success;
         }
 
         bool Consume(Task& task)
@@ -47,6 +64,7 @@ namespace nx
 
         bool Steal(Task& task, size_t threadId)
         {
+
             return queue.try_dequeue(consumerTokens[threadId], task);
         }
 
@@ -74,13 +92,13 @@ namespace nx
         void Run(int threadId);
         void Shutdown() ;
 
-         std::optional<NxError> PostTask(Task&& task,int threadId = -1) noexcept;
+         nx::Error PostTask(Task&& task,int threadId = -1) noexcept;
 
         ~WorkerLoop() ;
 
     private:
-        std::pmr::vector<ThreadPack> m_threads;
-        TaskQueue m_globalTaskQueue;
+        std::pmr::vector<ThreadPack> m_threads{};
+        TaskQueue m_globalTaskQueue{};
         std::pmr::memory_resource* m_resource;
         bool m_shutdown = false;
         size_t m_threadSize;

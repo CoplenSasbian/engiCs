@@ -11,7 +11,7 @@ export namespace nx {
 		Win32EventLoop();
 		~Win32EventLoop() override = default;
 
-		std::optional<NxError> Initialize() override;
+		Error Initialize() override;
 
 		void Shutdown() override;
 		void PoolEvents() override;

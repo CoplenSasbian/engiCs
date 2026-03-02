@@ -3,6 +3,7 @@ module;
 #include <optional>
 
 export module game.context;
+import game.error_code;
 import nx.concurrency.threadpool;
 import nx.core.types;
 
@@ -13,7 +14,7 @@ export namespace game {
 	public:
 		void PreInitialize() override;
 
-		std::optional<NxError> Initialize() override;
+		Error Initialize() override;
 
 		void Shutdown() override;
 
