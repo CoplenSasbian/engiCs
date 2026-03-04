@@ -1,0 +1,1 @@
+ module nx.platform.win32.window;

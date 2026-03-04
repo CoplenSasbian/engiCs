@@ -46,11 +46,6 @@ target_compile_definitions(ecs PRIVATE
 
 
 target_link_libraries(ecs PRIVATE
-        esc_lib_core
-        esc_lib_concurrency
-        esc_lib_platform
-        esc_lib_resource
-        esc_lib_rhi
         esc_lib_game
 )
 

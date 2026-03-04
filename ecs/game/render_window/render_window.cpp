@@ -5,7 +5,3 @@
 module game.render_window;
 
 
-bool game::RenderWindow::OnCreate(ECreate &create) {
-    SetVisible(true);
-    return true;
-}

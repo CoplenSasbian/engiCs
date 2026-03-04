@@ -31,9 +31,9 @@ export namespace nx {
 	class IComponent {
 	public:
 
-		virtual void PreInitialize() {}
-		virtual Error Initialize() = 0;
-		virtual void Shutdown() = 0;
+		virtual void PreInitialize() noexcept{}
+		virtual Error Initialize() noexcept= 0;
+		virtual void Shutdown() noexcept= 0;
 
 		virtual ~IComponent() = default;
 	};

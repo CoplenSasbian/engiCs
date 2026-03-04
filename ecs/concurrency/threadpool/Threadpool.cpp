@@ -114,6 +114,10 @@ int nx::Threadpool::CurrentThreadToken() noexcept
 
 nx::Threadpool::TheadToken nx::Threadpool::GetAnyThreadToken(ThreadType type) const noexcept
 {
+
+
+
+
     static std::atomic<TheadToken> ret = 0;
 
     switch (type)

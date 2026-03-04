@@ -1,23 +1,31 @@
 module;
-#include <memory>
 
 export module game.app;
-
-import nx.platform.window;
+import nx.platform.win32;
+import nx.platform.win32.event_loop;
+import nx.core.memory;
 import game.render_window;
-import game.context;
 export namespace game {
 	using namespace nx;
+
+		constexpr   PlatformMagic Platform = PlatformWin32;
+
+
 	class App {
-		std::shared_ptr<IEventLoop> m_eventLoop;
-		Context m_context;
-		RenderWindow m_window;
-
-
 	public:
+
+
+
+
 		App(int argc, char** argv);
+		void Quit();
 		~App();
 		void Run();
 
+		IEventloop* GetEventLoop() {
+			return &m_event_loop;
+		}
+	private:
+		nx::EventLoop<PlatformMagic> m_event_loop;
 	};
 }

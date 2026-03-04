@@ -17,7 +17,9 @@ namespace nx
     enum class CoreErrc
     {
         Success = 0,
-        UnknownError = 1,
+        OutOfBounds,
+        BufferOverflow,
+        UnknownError = -1,
     };
 
 
@@ -34,6 +36,8 @@ namespace nx
             {
             case CoreErrc::Success:
                 return "Success";
+            case CoreErrc::OutOfBounds:
+                return "Out of bounds";
             case CoreErrc::UnknownError:
             default:
                 return "Unknown";

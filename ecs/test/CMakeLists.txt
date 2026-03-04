@@ -56,3 +56,10 @@ target_link_libraries(test_threadpool
         esc_lib_concurrency
 )
 
+
+add_executable_with_deps(test_event_bind
+
+)
+target_link_libraries(test_event_bind
+        ecs_lib_platform
+)

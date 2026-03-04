@@ -1,4 +1,5 @@
 set(esc_lib_core_sources
+
         "error_code/error_code.ixx"
         "config/console_config.ixx"
         "container/hive.ixx"
@@ -11,6 +12,8 @@ set(esc_lib_core_sources
         "utils/single.ixx"
         "utils/emitter.ixx"
         "utils/function_traits.ixx"
+        "utils/sso_any.ixx"
+
 
         "container/concurrent_queue.h"
         "config/console_config.cpp"

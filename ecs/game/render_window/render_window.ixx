@@ -1,13 +1,11 @@
 
 export module game.render_window;
-import nx.platform.window.win32;
+import nx.platform.win32.window;
 export namespace  game{
 
-    using namespace nx;
 
-    class RenderWindow :public Win32Window {
+    class RenderWindow  {
     public:
-        bool OnCreate(ECreate& )override;
     };
 
 
