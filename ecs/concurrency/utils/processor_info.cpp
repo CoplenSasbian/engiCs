@@ -1,4 +1,4 @@
-module;
+#include "processor_info.h"
 #ifdef WIN32
 
 #define WIN32_LEAN_AND_MEAN
@@ -10,8 +10,6 @@ module;
 #endif
 
 
-module nx.concurrency.utils.processor_info;
-import nx.concurrency.error_code;
 
 #ifdef WIN32
 
@@ -86,7 +84,7 @@ static nx::Result<std::vector<ProcessorInfo> > _CollectProcessInfo() noexcept
 
 
     if (err)
-        return  nx::UnExpected(err.value());
+        return  nx::Unexpected(err.value());
 
     return result;
 }
@@ -128,7 +126,7 @@ nx::Result<std::span<uint64_t>> nx::GetCoreMask(CoreEfficiencyClass c) noexcept
 
     if ( err)
     {
-        return nx::UnExpected(err.value());
+        return nx::Unexpected(err.value());
     }
 
     return c == High ? high : low;
@@ -137,6 +135,6 @@ nx::Result<std::span<uint64_t>> nx::GetCoreMask(CoreEfficiencyClass c) noexcept
 nx::Error nx::SetCurrentThreadAffinity(uint64_t mask) noexcept
 {
     ::SetThreadAffinityMask(GetCurrentThread(), mask);
-    return nx::NoError;
+    return nx::Succeeded;
 }
 #endif

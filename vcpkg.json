@@ -10,7 +10,8 @@
     "sol2",
     "boost-container",
     "boost-asio",
-    "boost-system"
+    "boost-system",
+    "boost-locale"
   ],
   "version-string": "1.1.1"
 }

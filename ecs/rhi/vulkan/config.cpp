@@ -1,7 +1,6 @@
-module;
+#include "config.h"
 #include <sqlite_modern_cpp.h>
 #include <format>
-module nx.rhi.vk.config;
 
 sqlite::database& Database()
 {

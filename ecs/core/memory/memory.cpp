@@ -1,9 +1,7 @@
-module;
-
+#include "memory.h"
 #include <mimalloc.h>
 #include <memory_resource>
 
-module nx.core.memory;
 
 
 
@@ -26,6 +24,16 @@ std::pmr::memory_resource* nx::GetCommandResource()
     static nx::CommonResource gCommonResource;
 
     return &gCommonResource;
+}
+
+void* nx::mi_malloc(size_t size)
+{
+    return ::mi_malloc(size);
+}
+
+void nx::mi_free(void* ptr)
+{
+    ::mi_free(ptr);
 }
 
 void nx::InitResource()

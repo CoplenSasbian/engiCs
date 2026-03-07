@@ -1,11 +1,13 @@
-module;
+
+#include "console_config.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
 #include <iostream>
 #include <locale>
 
-module nx.core.config.console;
+
 
 void nx::SetupConsole()
 {

@@ -1,26 +1,25 @@
-module;
-#include <cstdint>
+#include "event_converter.h"
 #include <windows.h>
 #include <windowsx.h>
-module nx.platform.win32.event_looop.event;
-import nx.platform.win32;
-import nx.platform.event_loop.event;
 
-namespace nx {
+namespace nx
+{
+    // Helper function to convert Win32 WPARAM/LPARAM to Nx MouseButton
+    static MouseButton GetMouseButtonFromWParam(WPARAM wParam)
+    {
+        if (wParam & MK_LBUTTON) return MouseButton::Left;
+        if (wParam & MK_RBUTTON) return MouseButton::Right;
+        if (wParam & MK_MBUTTON) return MouseButton::Middle;
+        if (wParam & MK_XBUTTON1) return MouseButton::X1;
+        if (wParam & MK_XBUTTON2) return MouseButton::X2;
+        return MouseButton::Left; // Fallback
+    }
 
-// Helper function to convert Win32 WPARAM/LPARAM to Nx MouseButton
-static MouseButton GetMouseButtonFromWParam(WPARAM wParam) {
-    if (wParam & MK_LBUTTON) return MouseButton::Left;
-    if (wParam & MK_RBUTTON) return MouseButton::Right;
-    if (wParam & MK_MBUTTON) return MouseButton::Middle;
-    if (wParam & MK_XBUTTON1) return MouseButton::X1;
-    if (wParam & MK_XBUTTON2) return MouseButton::X2;
-    return MouseButton::Left; // Fallback
-}
-
-// Helper function to convert Win32 WPARAM to Nx Key
-static Key GetKeyFromWParam(WPARAM wParam) {
-    switch (wParam) {
+    // Helper function to convert Win32 WPARAM to Nx Key
+    static Key GetKeyFromWParam(WPARAM wParam)
+    {
+        switch (wParam)
+        {
         case VK_BACK: return Key::Backspace;
         case VK_TAB: return Key::Tab;
         case VK_RETURN: return Key::Enter;
@@ -67,280 +66,404 @@ static Key GetKeyFromWParam(WPARAM wParam) {
         case VK_CONTROL: return Key::LControl;
         case VK_MENU: return Key::LAlt;
         default: return static_cast<Key>(wParam);
+        }
     }
-}
 
-// --- Implementation for EventBase converter ---
-EventBase EventConverter<PlatformWin32, EventBase>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return EventBase{.window = window};
-}
 
-void EventConverter<PlatformWin32, EventBase>::toNative(const EventBase& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_NULL;
-}
+    // --- Implementation for EventBase converter ---
+    EventBase EventConverter<PlatformWin32, EventBase>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd,GWLP_USERDATA));
+        return EventBase{.window = window};
+    }
 
-// --- Implementation for CloseEvent converter ---
-CloseEvent EventConverter<PlatformWin32, CloseEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return CloseEvent{{.window = window}};
-}
+    void EventConverter<PlatformWin32, EventBase>::toNative(const EventBase& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
+        msg->message = WM_NULL;
+    }
 
-void EventConverter<PlatformWin32, CloseEvent>::toNative(const CloseEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_CLOSE;
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, EventBase>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_NULL};
+        return {arr};
+    }
 
-// --- Implementation for ResizeEvent converter ---
-ResizeEvent EventConverter<PlatformWin32, ResizeEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return ResizeEvent{
-         {.window = window},
-        LOWORD(msg->lParam),
-        HIWORD(msg->lParam)
-    };
-}
+    // --- Implementation for CloseEvent converter ---
+    CloseEvent EventConverter<PlatformWin32, CloseEvent>::fromNative(void* rawMsg)
+    {
+        return CloseEvent{ EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg)};
+    }
 
-void EventConverter<PlatformWin32, ResizeEvent>::toNative(const ResizeEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_SIZE;
-    msg->lParam = MAKELONG(event.width, event.height);
-}
 
-// --- Implementation for MoveEvent converter ---
-MoveEvent EventConverter<PlatformWin32, MoveEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return MoveEvent{
-        {.window = window},
-        static_cast<int>(GET_X_LPARAM(msg->lParam)),
-        static_cast<int>(GET_Y_LPARAM(msg->lParam))
-    };
+    void EventConverter<PlatformWin32, CloseEvent>::toNative(const CloseEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_CLOSE;
+    }
 
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, CloseEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_CLOSE};
+        return arr;
+    }
 
-void EventConverter<PlatformWin32, MoveEvent>::toNative(const MoveEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_MOVE;
-    msg->lParam = MAKELONG(event.x, event.y);
-}
+    // --- Implementation for ResizeEvent converter ---
+    ResizeEvent EventConverter<PlatformWin32, ResizeEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        return ResizeEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            LOWORD(msg->lParam),
+            HIWORD(msg->lParam)
+        };
+    }
 
-// --- Implementation for FocusEvent converter ---
-FocusEvent EventConverter<PlatformWin32, FocusEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    // WM_SETFOCUS lParam is typically 0, so we just pass the window
-    return FocusEvent{{.window = window}};
-}
+    void EventConverter<PlatformWin32, ResizeEvent>::toNative(const ResizeEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_SIZE;
+        msg->lParam = MAKELONG(event.width, event.height);
+    }
 
-void EventConverter<PlatformWin32, FocusEvent>::toNative(const FocusEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_SETFOCUS;
-    msg->lParam = 0;
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, ResizeEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_SIZE};
+        return arr;
+    }
 
-// --- Implementation for LostFocusEvent converter ---
-LostFocusEvent EventConverter<PlatformWin32, LostFocusEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    // WM_KILLFOCUS lParam is typically 0, so we just pass the window
-    return LostFocusEvent{{.window = window}};
-}
+    // --- Implementation for MoveEvent converter ---
+    MoveEvent EventConverter<PlatformWin32, MoveEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        return MoveEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            static_cast<int>(GET_X_LPARAM(msg->lParam)),
+            static_cast<int>(GET_Y_LPARAM(msg->lParam))
+        };
+    }
 
-void EventConverter<PlatformWin32, LostFocusEvent>::toNative(const LostFocusEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_KILLFOCUS;
-    msg->lParam = 0;
-}
+    void EventConverter<PlatformWin32, MoveEvent>::toNative(const MoveEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_MOVE;
+        msg->lParam = MAKELONG(event.x, event.y);
+    }
 
-// --- Implementation for MouseMoveEvent converter ---
-MouseMoveEvent EventConverter<PlatformWin32, MouseMoveEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return MouseMoveEvent{
-        {.window = window},
-        static_cast<float>(GET_X_LPARAM(msg->lParam)),
-        static_cast<float>(GET_Y_LPARAM(msg->lParam))
-    };
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, MoveEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_MOVE};
+        return arr;
+    }
+    // --- Implementation for FocusEvent converter ---
+    FocusEvent EventConverter<PlatformWin32, FocusEvent>::fromNative(void* rawMsg)
+    {
+        return FocusEvent{EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg)};
+    }
 
-void EventConverter<PlatformWin32, MouseMoveEvent>::toNative(const MouseMoveEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_MOUSEMOVE;
-    msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
-}
+    void EventConverter<PlatformWin32, FocusEvent>::toNative(const FocusEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_SETFOCUS;
+        msg->lParam = 0;
+    }
 
-// --- Implementation for MousePressEvent converter ---
-MousePressEvent EventConverter<PlatformWin32, MousePressEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    MouseButton button = MouseButton::Left; // Default
-    switch (msg->message) {
-        case WM_LBUTTONDOWN: button = MouseButton::Left; break;
-        case WM_RBUTTONDOWN: button = MouseButton::Right; break;
-        case WM_MBUTTONDOWN: button = MouseButton::Middle; break;
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, FocusEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_SETFOCUS};
+        return arr;
+    }
+    // --- Implementation for LostFocusEvent converter ---
+    LostFocusEvent EventConverter<PlatformWin32, LostFocusEvent>::fromNative(void* rawMsg)
+    {
+        return LostFocusEvent{EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg)};
+    }
+
+    void EventConverter<PlatformWin32, LostFocusEvent>::toNative(const LostFocusEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_KILLFOCUS;
+        msg->lParam = 0;
+    }
+
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, LostFocusEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_KILLFOCUS};
+        return arr;
+    }
+
+    // --- Implementation for MouseMoveEvent converter ---
+    MouseMoveEvent EventConverter<PlatformWin32, MouseMoveEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        return MouseMoveEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            static_cast<float>(GET_X_LPARAM(msg->lParam)),
+            static_cast<float>(GET_Y_LPARAM(msg->lParam))
+        };
+    }
+
+    void EventConverter<PlatformWin32, MouseMoveEvent>::toNative(const MouseMoveEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_MOUSEMOVE;
+        msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
+    }
+
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, MouseMoveEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {WM_MOUSEMOVE};
+        return arr;
+    }
+    // --- Implementation for MousePressEvent converter ---
+    MousePressEvent EventConverter<PlatformWin32, MousePressEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        MouseButton button = MouseButton::Left; // Default
+        switch (msg->message)
+        {
+        case WM_LBUTTONDOWN: button = MouseButton::Left;
+            break;
+        case WM_RBUTTONDOWN: button = MouseButton::Right;
+            break;
+        case WM_MBUTTONDOWN: button = MouseButton::Middle;
+            break;
         case WM_XBUTTONDOWN:
             button = (HIWORD(msg->wParam) == XBUTTON1) ? MouseButton::X1 : MouseButton::X2;
             break;
+        }
+
+        return MousePressEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            button,
+            static_cast<float>(GET_X_LPARAM(msg->lParam)),
+            static_cast<float>(GET_Y_LPARAM(msg->lParam))
+        };
     }
 
-    return MousePressEvent{
-        {.window = window},
-        button,
-        static_cast<float>(GET_X_LPARAM(msg->lParam)),
-        static_cast<float>(GET_Y_LPARAM(msg->lParam))
-    };
-}
-
-void EventConverter<PlatformWin32, MousePressEvent>::toNative(const MousePressEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    switch (event.button) {
-        case MouseButton::Left: msg->message = WM_LBUTTONDOWN; break;
-        case MouseButton::Right: msg->message = WM_RBUTTONDOWN; break;
-        case MouseButton::Middle: msg->message = WM_MBUTTONDOWN; break;
-        case MouseButton::X1: msg->message = WM_XBUTTONDOWN; msg->wParam = MAKEWPARAM(0, XBUTTON1); break;
-        case MouseButton::X2: msg->message = WM_XBUTTONDOWN; msg->wParam = MAKEWPARAM(0, XBUTTON2); break;
+    void EventConverter<PlatformWin32, MousePressEvent>::toNative(const MousePressEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        switch (event.button)
+        {
+        case MouseButton::Left: msg->message = WM_LBUTTONDOWN;
+            break;
+        case MouseButton::Right: msg->message = WM_RBUTTONDOWN;
+            break;
+        case MouseButton::Middle: msg->message = WM_MBUTTONDOWN;
+            break;
+        case MouseButton::X1: msg->message = WM_XBUTTONDOWN;
+            msg->wParam = MAKEWPARAM(0, XBUTTON1);
+            break;
+        case MouseButton::X2: msg->message = WM_XBUTTONDOWN;
+            msg->wParam = MAKEWPARAM(0, XBUTTON2);
+            break;
+        }
+        msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
     }
-    msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, MousePressEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_LBUTTONDOWN,
+            WM_RBUTTONDOWN,
+            WM_MBUTTONDOWN,
+            WM_XBUTTONDOWN
+        };
+        return arr;
+    }
 
-// --- Implementation for MouseReleaseEvent converter ---
-MouseReleaseEvent EventConverter<PlatformWin32, MouseReleaseEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    MouseButton button = MouseButton::Left; // Default
-    switch (msg->message) {
-        case WM_LBUTTONUP: button = MouseButton::Left; break;
-        case WM_RBUTTONUP: button = MouseButton::Right; break;
-        case WM_MBUTTONUP: button = MouseButton::Middle; break;
+    // --- Implementation for MouseReleaseEvent converter ---
+    MouseReleaseEvent EventConverter<PlatformWin32, MouseReleaseEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        MouseButton button = MouseButton::Left; // Default
+        switch (msg->message)
+        {
+        case WM_LBUTTONUP: button = MouseButton::Left;
+            break;
+        case WM_RBUTTONUP: button = MouseButton::Right;
+            break;
+        case WM_MBUTTONUP: button = MouseButton::Middle;
+            break;
         case WM_XBUTTONUP:
             button = (HIWORD(msg->wParam) == XBUTTON1) ? MouseButton::X1 : MouseButton::X2;
             break;
+        }
+
+        return MouseReleaseEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            button,
+            static_cast<float>(GET_X_LPARAM(msg->lParam)),
+            static_cast<float>(GET_Y_LPARAM(msg->lParam))
+        };
     }
 
-    return MouseReleaseEvent{
-        {.window = window},
-        button,
-       static_cast<float>(GET_X_LPARAM(msg->lParam)),
-        static_cast<float>(GET_Y_LPARAM(msg->lParam))
-    };
-}
-
-void EventConverter<PlatformWin32, MouseReleaseEvent>::toNative(const MouseReleaseEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    switch (event.button) {
-        case MouseButton::Left: msg->message = WM_LBUTTONUP; break;
-        case MouseButton::Right: msg->message = WM_RBUTTONUP; break;
-        case MouseButton::Middle: msg->message = WM_MBUTTONUP; break;
-        case MouseButton::X1: msg->message = WM_XBUTTONUP; msg->wParam = MAKEWPARAM(0, XBUTTON1); break;
-        case MouseButton::X2: msg->message = WM_XBUTTONUP; msg->wParam = MAKEWPARAM(0, XBUTTON2); break;
+    void EventConverter<PlatformWin32, MouseReleaseEvent>::toNative(const MouseReleaseEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        switch (event.button)
+        {
+        case MouseButton::Left: msg->message = WM_LBUTTONUP;
+            break;
+        case MouseButton::Right: msg->message = WM_RBUTTONUP;
+            break;
+        case MouseButton::Middle: msg->message = WM_MBUTTONUP;
+            break;
+        case MouseButton::X1: msg->message = WM_XBUTTONUP;
+            msg->wParam = MAKEWPARAM(0, XBUTTON1);
+            break;
+        case MouseButton::X2: msg->message = WM_XBUTTONUP;
+            msg->wParam = MAKEWPARAM(0, XBUTTON2);
+            break;
+        }
+        msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
     }
-    msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
-}
 
-// --- Implementation for MouseWheelEvent converter ---
-MouseWheelEvent EventConverter<PlatformWin32, MouseWheelEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    short wheelDelta = GET_WHEEL_DELTA_WPARAM(msg->wParam);
-    float delta_y = static_cast<float>(wheelDelta) / WHEEL_DELTA;
-    // Horizontal wheel is not standard in all messages, this handles WM_MOUSEHWHEEL
-    float delta_x = 0.0f;
-    if (msg->message == WM_MOUSEHWHEEL) {
-        delta_x = -delta_y; // Typically, horizontal scroll value is inverted
-        delta_y = 0.0f;
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, MouseReleaseEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_LBUTTONUP,
+            WM_RBUTTONUP,
+            WM_MBUTTONUP,
+            WM_XBUTTONUP
+        };
+        return arr;
     }
-    return MouseWheelEvent{
-        {.window = window},
-        delta_x,
-        delta_y,
-        static_cast<float>(GET_X_LPARAM(msg->lParam)),
-        static_cast<float>(GET_Y_LPARAM(msg->lParam))
-    };
-}
-
-void EventConverter<PlatformWin32, MouseWheelEvent>::toNative(const MouseWheelEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    if (event.delta_x != 0.0f) {
-        msg->message = WM_MOUSEHWHEEL;
-        msg->wParam = MAKEWPARAM(0, static_cast<SHORT>(-event.delta_x * WHEEL_DELTA)); // Invert for horizontal
-    } else {
-        msg->message = WM_MOUSEWHEEL;
-        msg->wParam = MAKEWPARAM(0, static_cast<SHORT>(event.delta_y * WHEEL_DELTA));
+    // --- Implementation for MouseWheelEvent converter ---
+    MouseWheelEvent EventConverter<PlatformWin32, MouseWheelEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        short wheelDelta = GET_WHEEL_DELTA_WPARAM(msg->wParam);
+        float delta_y = static_cast<float>(wheelDelta) / WHEEL_DELTA;
+        // Horizontal wheel is not standard in all messages, this handles WM_MOUSEHWHEEL
+        float delta_x = 0.0f;
+        if (msg->message == WM_MOUSEHWHEEL)
+        {
+            delta_x = -delta_y; // Typically, horizontal scroll value is inverted
+            delta_y = 0.0f;
+        }
+        return MouseWheelEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            delta_x,
+            delta_y,
+            static_cast<float>(GET_X_LPARAM(msg->lParam)),
+            static_cast<float>(GET_Y_LPARAM(msg->lParam))
+        };
     }
-    msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
-}
 
-// --- Implementation for KeyPressEvent converter ---
-KeyPressEvent EventConverter<PlatformWin32, KeyPressEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    bool isRepeat = (msg->lParam & (1 << 30)) != 0;
-    return KeyPressEvent{
-        {.window = window},
-        GetKeyFromWParam(msg->wParam),
-        isRepeat
-    };
-}
-
-void EventConverter<PlatformWin32, KeyPressEvent>::toNative(const KeyPressEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_KEYDOWN;
-    msg->wParam = static_cast<WPARAM>(event.key_code);
-    // Setting lParam for repeat count and other flags is complex, simplified here
-    if (event.is_repeat) {
-        msg->lParam |= (1 << 30);
+    void EventConverter<PlatformWin32, MouseWheelEvent>::toNative(const MouseWheelEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        if (event.delta_x != 0.0f)
+        {
+            msg->message = WM_MOUSEHWHEEL;
+            msg->wParam = MAKEWPARAM(0, static_cast<SHORT>(-event.delta_x * WHEEL_DELTA)); // Invert for horizontal
+        }
+        else
+        {
+            msg->message = WM_MOUSEWHEEL;
+            msg->wParam = MAKEWPARAM(0, static_cast<SHORT>(event.delta_y * WHEEL_DELTA));
+        }
+        msg->lParam = MAKELONG(static_cast<LONG>(event.x), static_cast<LONG>(event.y));
     }
-}
 
-// --- Implementation for KeyReleaseEvent converter ---
-KeyReleaseEvent EventConverter<PlatformWin32, KeyReleaseEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return KeyReleaseEvent{
-        {.window = window},
-        GetKeyFromWParam(msg->wParam)
-    };
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, MouseWheelEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_MOUSEHWHEEL
+        };
+        return arr;
+    }
+    // --- Implementation for KeyPressEvent converter ---
+    KeyPressEvent EventConverter<PlatformWin32, KeyPressEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        bool isRepeat = (msg->lParam & (1 << 30)) != 0;
+        return KeyPressEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            GetKeyFromWParam(msg->wParam),
+            isRepeat
+        };
+    }
 
-void EventConverter<PlatformWin32, KeyReleaseEvent>::toNative(const KeyReleaseEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_KEYUP;
-    msg->wParam = static_cast<WPARAM>(event.key_code);
-}
+    void EventConverter<PlatformWin32, KeyPressEvent>::toNative(const KeyPressEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_KEYDOWN;
+        msg->wParam = static_cast<WPARAM>(event.key_code);
+        // Setting lParam for repeat count and other flags is complex, simplified here
+        if (event.is_repeat)
+        {
+            msg->lParam |= (1 << 30);
+        }
+    }
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, KeyPressEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_KEYDOWN
+        };
+        return arr;
+    }
+    // --- Implementation for KeyReleaseEvent converter ---
+    KeyReleaseEvent EventConverter<PlatformWin32, KeyReleaseEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        return KeyReleaseEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            GetKeyFromWParam(msg->wParam)
+        };
+    }
 
-// --- Implementation for KeyCharEvent converter ---
-KeyCharEvent EventConverter<PlatformWin32, KeyCharEvent>::fromNative(void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    auto window = reinterpret_cast<IWindow*>(::GetWindowLongPtrW(msg->hwnd, GWLP_USERDATA));
-    return KeyCharEvent{
-       { .window = window},
-        static_cast<std::uint32_t>(msg->wParam)
-    };
-}
+    void EventConverter<PlatformWin32, KeyReleaseEvent>::toNative(const KeyReleaseEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_KEYUP;
+        msg->wParam = static_cast<WPARAM>(event.key_code);
+    }
 
-void EventConverter<PlatformWin32, KeyCharEvent>::toNative(const KeyCharEvent& event, void* rawMsg) {
-    MSG* msg = static_cast<MSG*>(rawMsg);
-    msg->hwnd = static_cast<HWND>(event.window->NativeHandle());
-    msg->message = WM_CHAR;
-    msg->wParam = static_cast<WPARAM>(event.character);
-}
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, KeyReleaseEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_KEYUP
+        };
+        return arr;
+    }
+    // --- Implementation for KeyCharEvent converter ---
+    KeyCharEvent EventConverter<PlatformWin32, KeyCharEvent>::fromNative(void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        return KeyCharEvent{
+            EventConverter<PlatformWin32, EventBase>::fromNative(rawMsg),
+            static_cast<std::uint32_t>(msg->wParam)
+        };
+    }
 
+    void EventConverter<PlatformWin32, KeyCharEvent>::toNative(const KeyCharEvent& event, void* rawMsg)
+    {
+        MSG* msg = static_cast<MSG*>(rawMsg);
+        EventConverter<PlatformWin32, EventBase>::toNative(event, rawMsg);
+        msg->message = WM_CHAR;
+        msg->wParam = static_cast<WPARAM>(event.character);
+    }
+
+    std::span<PlatformMessageType> EventConverter<PlatformWin32, KeyCharEvent>::nativeMsg()
+    {
+        static  PlatformMessageType arr[] = {
+            WM_CHAR
+        };
+        return arr;
+    }
 } // namespace nx
-

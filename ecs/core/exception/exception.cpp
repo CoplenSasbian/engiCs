@@ -1,8 +1,9 @@
-module;
+#include "exception.h"
+
 #include <sstream>
 #include <Windows.h>
 #include <stacktrace>
-module nx.core.exception;
+
 
 nx::NxError::NxError(std::string_view error, std::stacktrace trace)
 	:message()

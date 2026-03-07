@@ -1,11 +1,9 @@
-module;
+#include "log.h"
 #include <print>
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-
-module nx.core.log;
-import nx.core.log.sqlite_sink;
+#include "sqlite_sink.h"
 
 
 static const std::vector<spdlog::sink_ptr>& GetSinks()

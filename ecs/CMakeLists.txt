@@ -1,23 +1,32 @@
 
-add_compile_definitions(_UTF8)
+
 
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(lua CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS  container asio system)
+find_package(Boost REQUIRED COMPONENTS  container asio  locale)
 
 find_path(SQLITE_MODERN_CPP_INCLUDE_DIRS "sqlite_modern_cpp.h")
 find_path(PLF_HIVE_INCLUDE_DIRS "plf_hive.h")
 find_path(SOL2_INCLUDE_DIRS "sol/sol.hpp")
 
-include(source.cmake)
 
-
-add_executable(ecs
-    ecs.cpp
+file(GLOB_RECURSE ECS_SOURCE
+        LIST_DIRECTORIES false
+        RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.ixx
 )
+
+
+
+
+add_library(ecs STATIC)
+
+target_sources_by_extension(ecs ${ECS_SOURCE})
 
 
 set_target_properties(ecs PROPERTIES
@@ -30,11 +39,6 @@ set_target_properties(ecs PROPERTIES
 
 
 
-target_sources(ecs
-        PRIVATE
-       ecs.cpp
-)
-
 
 target_compile_definitions(ecs PRIVATE
         NOMINMAX
@@ -46,7 +50,16 @@ target_compile_definitions(ecs PRIVATE
 
 
 target_link_libraries(ecs PRIVATE
-        esc_lib_game
+        mimalloc
+        Boost::asio
+        Boost::locale
+        Boost::container
+        unofficial::sqlite3::sqlite3
+        spdlog::spdlog
+        Vulkan::Vulkan
+        PUBLIC
+        STDEXEC::stdexec
+
 )
 
 target_include_directories(ecs PRIVATE
@@ -55,6 +68,3 @@ target_include_directories(ecs PRIVATE
         ${SQLITE_MODERN_CPP_INCLUDE_DIRS}
 )
 
-if(BUILD_TESTING)
-add_subdirectory(test)
-endif ()

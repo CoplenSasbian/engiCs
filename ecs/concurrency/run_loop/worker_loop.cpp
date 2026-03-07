@@ -1,14 +1,10 @@
-module;
+#include "worker_loop.h"
 #include <thread>
 #include <format>
-#include "log/log.h"
-#include "container/concurrent_queue.h"
-module nx.concurrency.run_loop.worker_loop;
-import nx.concurrency.error_code;
-import nx.core.log;
-import nx.concurrency.utils.pause;
-import nx.core.exception;
-
+#include <core/log/log.h>
+#include "core/container/concurrent_queue.h"
+#include "core//error_code.h"
+#include "concurrency/utils/pause.h"
 LOGGER(worker_loop);
 
 
@@ -133,10 +129,10 @@ void nx::WorkerLoop::Shutdown()
     {
         if (tCurrentIndex == threadId)
         {
-            if (m_threads[threadId].Product(std::move(task)))return NoError;
+            if (m_threads[threadId].Product(std::move(task)))return Succeeded;
         }else
         {
-            if (m_threads[threadId].ProductFromOtherThread(std::move(task)))return NoError;
+            if (m_threads[threadId].ProductFromOtherThread(std::move(task)))return Succeeded;
         }
     }
 
@@ -147,10 +143,10 @@ void nx::WorkerLoop::Shutdown()
         {
             t.Notify();
         }
-        return NoError;
+        return Succeeded;
     }
 
-    return  nx::make_error_code(ConcurrencyErrc::QueueFull);
+    return  nx::make_error_code(EcsErrc::QueueFull);
 }
 
 nx::WorkerLoop::~WorkerLoop()

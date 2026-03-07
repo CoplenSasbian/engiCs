@@ -1,9 +1,7 @@
-module;
+#include "event_loop.h"
 #include <boost/asio.hpp>
-#include "log/log.h"
-module nx.concurrency.run_loop.event_source;
-import nx.concurrency.error_code;
-import nx.core.log;
+#include <core/log/log.h>
+
 LOGGER(event_loop);
 
 
@@ -45,11 +43,11 @@ nx::Error nx::EventLoop::PostTask(Task&& task) noexcept
 {
    if (m_impl->m_ctx.stopped())
    {
-       return make_error_code(ConcurrencyErrc::LoopStopped);
+       return make_error_code(EcsErrc::LoopStopped);
    }
 
     boost::asio::post(m_impl->m_ctx, std::move(task));
-    return NoError;
+    return Succeeded;
 }
 
 nx::EventLoop::~EventLoop() noexcept
@@ -109,7 +107,7 @@ nx::Error nx::Timer::Start(Duration delay, Duration repeat) noexcept
 
     m_impl->m_timer.async_wait(TimerCallback{this,repeat});
 
-    return NoError;
+    return Succeeded;
 }
 
 void nx::Timer::Run() const noexcept

@@ -1,9 +1,8 @@
-module;
+#include "sqlite_sink.h"
 #include <chrono>
 #include <spdlog/spdlog.h>
 #include <sqlite_modern_cpp.h>
 #include <filesystem>
-module nx.core.log.sqlite_sink;
 
 static  std::string GetLogPath() {
 	return  (std::filesystem::current_path() / "data"/"logs.db").string();

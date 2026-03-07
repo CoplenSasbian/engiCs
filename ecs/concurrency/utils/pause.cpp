@@ -1,12 +1,10 @@
-module;
-
+#include "pause.h"
 #ifdef _WIN32
 #include <intrin.h>
 #endif
 
 #include <thread>  // For fallback
 
-module nx.concurrency.utils.pause;
 
 void nx::__Pause() noexcept
 {
