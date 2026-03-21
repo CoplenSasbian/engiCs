@@ -15,14 +15,19 @@ namespace nx
         Success = 0,
         OutOfBounds,
         BufferOverflow,
+        
         InvalidEncoding,
         UnsupportedEncoding,
         ConversionError,
+        
         LoopStopped,
         InvalidThreadToken,
         InvalidThreadType,
         QueueFull,
         NotAvailableWindow,
+
+		Retry,
+
         UnknownError = -1,
     };
 
@@ -64,3 +69,9 @@ namespace std {
     template <>
     struct is_error_code_enum<nx::EcsCategory> : true_type {};
 }
+
+
+#define RETURN_ON_ERROR(expr) do { auto _err = (expr); if (_err) { return _err; } } while(0)
+
+
+#define ASSIGN_OR_RETURN(lhs, expr) do { auto&& _res = (expr); if (!_res.has_value()) { return _res.error(); } (lhs) = std::move(_res.value()); } while (0)

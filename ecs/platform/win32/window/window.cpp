@@ -3,7 +3,11 @@
 #include <Windows.h>
 #include <system_error>
 
-
+#if defined(_MSC_VER)
+#pragma comment(linker,"\"/manifestdependency:type='win32' \
+name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
+processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#endif
 
 nx::Win32Window::~Win32Window()
 {
@@ -24,7 +28,7 @@ nx::Error nx::Win32Window::Create(String title, const Rect& rect) noexcept
 
     if (!m_hwnd)
     {
-        return std::error_code(::GetLastError(), std::system_category());
+		return make_system_error();
     }
 
     return Succeeded;
@@ -60,7 +64,7 @@ nx::Result<nx::Rect> nx::Win32Window::GetClientArea() const noexcept
     {
         return  rect;
     }
-    return Unexpected(std::error_code(GetLastError(), std::system_category()));
+    return Unexpected(make_system_error());
 }
 
 nx::Result<nx::Rect> nx::Win32Window::GetWindowArea() const noexcept
@@ -72,7 +76,7 @@ nx::Result<nx::Rect> nx::Win32Window::GetWindowArea() const noexcept
     {
         return  rect;
     }
-    return Unexpected(std::error_code(GetLastError(), std::system_category()));
+    return Unexpected(make_system_error());
 }
 
 bool nx::Win32Window::IsVisible() const noexcept
@@ -91,7 +95,7 @@ nx::Error nx::Win32Window::Maximize() noexcept
     {
         return Succeeded;
     }
-    return  std::error_code(::GetLastError(), std::system_category());
+    return  make_system_error();
 }
 
 nx::Error nx::Win32Window::Minimize() noexcept
@@ -102,10 +106,10 @@ nx::Error nx::Win32Window::Minimize() noexcept
     {
         return Succeeded;
     }
-    return  std::error_code(::GetLastError(), std::system_category());
+    return  make_system_error();
 }
 
-void* nx::Win32Window::NativeHandle() const noexcept
+nx::NativeWindowHandle nx::Win32Window::NativeHandle() const noexcept
 {
     return  m_hwnd;
 }
@@ -118,7 +122,7 @@ nx::Error nx::Win32Window::Restore() noexcept
     {
         return Succeeded;
     }
-    return  std::error_code(::GetLastError(), std::system_category());
+    return make_system_error();
 }
 
 nx::Error nx::Win32Window::SetVisible(bool show) noexcept
@@ -129,7 +133,7 @@ nx::Error nx::Win32Window::SetVisible(bool show) noexcept
     {
         return Succeeded;
     }
-    return  std::error_code(::GetLastError(), std::system_category());
+    return  make_system_error();
 }
 
 nx::Error nx::Win32Window::SetWindowArea(const Rect& rect) noexcept
@@ -140,7 +144,7 @@ nx::Error nx::Win32Window::SetWindowArea(const Rect& rect) noexcept
     {
         return Succeeded;
     }
-    return std::error_code(::GetLastError(), std::system_category());
+    return make_system_error();
 }
 
 
@@ -177,7 +181,7 @@ nx::IMessageBox::Result fromWinResult(int winResult) {
     case IDCANCEL: return Cancel;
     case IDYES:    return Yes;
     case IDNO:     return No;
-    default:       return Cancel; // 默认处理
+    default:       return Cancel; 
     }
 }
 

@@ -3,9 +3,9 @@
 
 
 namespace nx {
-    class Surface {
+    class RhiSurface {
     public:
-        virtual ~Surface()=delete;
+        virtual ~RhiSurface()=default;
 
     private:
 

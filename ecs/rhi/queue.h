@@ -1,19 +1,10 @@
 #pragma once
-
+#include "defs.h"
 namespace nx {
-
-    enum QueueType {
-        Direct,
-        Compute,
-        Transfer,
-        Present
-    };
-
-
-    class Queue {
+    class RhiQueue {
     public:
-        using enum QueueType;
-        virtual ~Queue() = default;
-
+        using enum EQueueTypeBits;
+        virtual ~RhiQueue() = default;
+        virtual EQueueType GetType() noexcept = 0;
     };
 }

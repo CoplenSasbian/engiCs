@@ -18,7 +18,7 @@ game::App::App(int argc, char** argv)
     }
     auto highCore = ret.value();
 
-    m_threadpool = std::make_unique<nx::Threadpool>(
+    m_threadpool = nx::make_common_ptr<nx::Threadpool>(
         highCore.size(), [&](size_t i)
         {
             nx::SetCurrentThreadAffinity(highCore[i]);
@@ -31,16 +31,20 @@ game::App::App(int argc, char** argv)
     m_event_loop.SetHandler<nx::CloseEvent>([&](const nx::CloseEvent& e)
     {
         nx::EMessageBox<Platform> msgbox;
-        auto ret = msgbox.show(nx::String::from(L"app"), nx::String::from(L"Quit?"), nx::IMessageBox::Icon::Question,
+        auto res = msgbox.show(nx::String::from(L"app"), nx::String::from(L"Quit?"), nx::IMessageBox::Icon::Question,
                                nx::IMessageBox::Button::YesNo);
-        auto result = ret == nx::IMessageBox::Result::Yes;
-        if (result)
+        if (res == nx::EMessageBox<Platform>::Result::Yes)
         {
             Quit();
         }
-        return result;
+        return true;
     });
 
+    if (auto ret = m_renderer.Initialize({.name = "app",.mode = renderer::Mode::Editor}, &m_window, renderer::RendererType::Vulkan))
+    {
+        _logger.Critical(std::format("Get core mask failed :{}", ret.value().message()));
+        std::abort();
+    }
 }
 
 void game::App::Quit()

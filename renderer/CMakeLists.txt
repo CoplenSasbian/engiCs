@@ -1,10 +1,4 @@
-
-add_executable( app
-)
-
-
-
-file(GLOB_RECURSE APP_SOURCE
+file(GLOB_RECURSE RENDERER_SOURCE
         LIST_DIRECTORIES false
         RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
@@ -12,19 +6,21 @@ file(GLOB_RECURSE APP_SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/*.ixx
 )
 
-target_sources_by_extension(app ${APP_SOURCE})
 
-set_target_properties(app PROPERTIES
+add_library(renderer STATIC)
+
+target_sources_by_extension(renderer ${RENDERER_SOURCE})
+
+set_target_properties(renderer PROPERTIES
         CXX_STANDARD 23
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
         CXX_SCAN_FOR_MODULES ON
         EXPERIMENTAL_CXX_MODULE_DYNDEP ON
 )
-find_package(mimalloc CONFIG REQUIRED)
 
-target_link_libraries(app
-        mimalloc
-        renderer
+
+target_link_libraries(renderer
+        PUBLIC
+        ecs
 )
-

@@ -1,14 +1,8 @@
 #include "message_loop.h"
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <system_error>
+#include <Windows.h>
 
 
-
-
-
-static nx::Error registerDefWindowClass(WNDPROC  proc)
-{
 #ifdef UNICODE
     #define    WND_CLASS_NAME()  nx::Platform<nx::PlatformWin32>::WndClassNameW()
 #else
@@ -17,25 +11,32 @@ static nx::Error registerDefWindowClass(WNDPROC  proc)
 
 
 
+
+static nx::Error registerDefWindowClass(WNDPROC  proc)
+{
+
+
+
+
     static bool registered = false;
     if (!registered)
     {
-        WNDCLASSEX wcex;
-        wcex.cbSize = sizeof(WNDCLASSEX);
-        wcex.style = CS_HREDRAW | CS_VREDRAW;
-        wcex.lpfnWndProc = proc;
-        wcex.cbClsExtra = 0;
-        wcex.cbWndExtra = 0;
-        wcex.hInstance = ::GetModuleHandle(0);
-        wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wcex.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-        wcex.lpszMenuName = NULL;
-        wcex.lpszClassName = WND_CLASS_NAME();
-        wcex.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
-        if (!RegisterClassEx(&wcex))
+        WNDCLASSEX wndclassexw;
+        wndclassexw.cbSize = sizeof(WNDCLASSEX);
+        wndclassexw.style = CS_HREDRAW | CS_VREDRAW;
+        wndclassexw.lpfnWndProc = proc;
+        wndclassexw.cbClsExtra = 0;
+        wndclassexw.cbWndExtra = 0;
+        wndclassexw.hInstance = ::GetModuleHandle(0);
+        wndclassexw.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+        wndclassexw.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wndclassexw.hbrBackground = static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH));
+        wndclassexw.lpszMenuName = nullptr;
+        wndclassexw.lpszClassName = WND_CLASS_NAME();
+        wndclassexw.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
+        if (!RegisterClassEx(&wndclassexw))
         {
-            return std::error_code(::GetLastError(), std::system_category());
+            return nx::make_system_error();
         }
         registered = true;
     }
@@ -82,8 +83,7 @@ nx::Error nx::Win32EventLoop::SentMessage(void* rawEvent) noexcept
     {
        return Succeeded;
     }
-    std::error_code ec{ static_cast<int>(::GetLastError()), std::system_category() };
-    return ec;
+    return make_system_error();
 }
 
 nx::Win32EventLoop::~Win32EventLoop()

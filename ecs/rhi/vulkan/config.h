@@ -1,9 +1,11 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <vulkan/vulkan.hpp>
 
 
  namespace nx {
+    static constexpr auto VulkanVersion = VK_API_VERSION_1_3;
 
     struct VulkanExtensionLayerInfo {
         int id;
@@ -12,10 +14,6 @@
         bool dev;
         bool force;
     };
-
-
-
-
 
 
 

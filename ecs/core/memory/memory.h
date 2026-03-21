@@ -6,7 +6,12 @@ namespace nx
 {
     void InitResource();
     void ShutdownResource();
-
+    extern "C"{
+        void* ecs_malloc(size_t size);
+        void ecs_free(void* ptr);
+        void* ecs_malloc_aligned(size_t size, size_t  alignment);
+        void* ecs_realloc_aligned(  void* pOriginal,size_t size,size_t alignment);
+    }
 
     class CommonResource : public std::pmr::memory_resource
     {
@@ -76,8 +81,7 @@ namespace nx
             GetUnsynchronizedCacheResource<T>(), std::forward<Args>(args)...);
     }
 
-    void* mi_malloc(size_t size);
-    void mi_free(void* ptr);
+
 
 
 
@@ -85,7 +89,7 @@ namespace nx
     [[nodiscard]]
     T* Make(Args&&... args)
     {
-        auto ptr = mi_malloc(sizeof(T));
+        auto ptr = ecs_malloc(sizeof(T));
         auto r = new(ptr) T(std::forward<Args>(args)...);
         return r;
     }
@@ -262,4 +266,25 @@ namespace nx
         T* m_ptr;
     };
 
+
+    namespace impl
+    {
+        struct CommonDeleter
+        {
+            template<typename T>
+            void operator()(T* ptr)
+            {
+                ecs_free(ptr);
+            }
+        };
+    }
+
+    template<typename T>
+    using CommonPtr = std::unique_ptr<T,impl::CommonDeleter>;
+
+    template<typename T, typename ...Args>
+    CommonPtr<T> make_common_ptr(Args&&... args)
+    {
+        return CommonPtr<T>(new(ecs_malloc(sizeof(T))) T(std::forward<Args>(args)...));
+    }
 }

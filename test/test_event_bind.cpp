@@ -15,7 +15,7 @@ int main()
     nx::MessageLoop<pl> eventLoop{};
 
     nx::Window<pl> window{};
-    if (auto err= window.Create(nx::String::from("app").value(), { 100,100,800,600 }))
+    if (auto err= window.Create(nx::String::from("app"), { 100,100,800,600 }))
     {
         std::println(stderr,"Create window error： {}",err.value().message());
         abort();

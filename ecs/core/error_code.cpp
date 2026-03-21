@@ -2,6 +2,9 @@
 #if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include "error_code.h"
+#include "error_code.h"
+#include "error_code.h"
 #endif
 
 const char* nx::EcsCategory::name() const noexcept
@@ -33,6 +36,8 @@ std::string nx::EcsCategory::message(int code) const
         return "Task queue Full";
     case EcsErrc::NotAvailableWindow:
         return "Not available window";
+    case EcsErrc::Retry:
+		return "Retry";
     case EcsErrc::UnknownError:
     default:
         return "Unknown";
@@ -58,3 +63,4 @@ std::error_code nx::make_system_error()
     return std::error_code(GetLastError(), std::system_category());
 }
 #endif
+

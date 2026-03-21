@@ -14,13 +14,15 @@ namespace nx
         int x, y, width, height;
     };
 
+    using NativeWindowHandle = void*;
+
     class IWindow
     {
     public:
         IWindow() = default;
-        ~IWindow() = default;
+        virtual ~IWindow() = default;
 
-        [[nodiscard]] virtual void* NativeHandle() const noexcept = 0;
+        [[nodiscard]] virtual NativeWindowHandle NativeHandle() const noexcept = 0;
 
         // Create a new window
         virtual Error Create(String title,const Rect& rect) noexcept = 0;

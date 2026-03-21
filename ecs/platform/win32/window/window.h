@@ -6,7 +6,7 @@ namespace nx
     class Win32Window:public IWindow
     {
     public:
-        virtual ~Win32Window();
+        ~Win32Window() override;
         [[nodiscard]] bool IsValid() const noexcept override;
         Error Create(String title, const Rect& rect) noexcept override;
         void Activate() noexcept override;
@@ -17,12 +17,12 @@ namespace nx
         [[nodiscard]] bool IsVisible() const noexcept override;
         Error Maximize() noexcept override;
         Error Minimize() noexcept override;
-        [[nodiscard]] void* NativeHandle() const noexcept override;
+        [[nodiscard]] NativeWindowHandle NativeHandle() const noexcept override;
         Error Restore() noexcept override;
         Error SetVisible(bool show) noexcept override;
         Error SetWindowArea(const Rect& rect) noexcept override;
     private:
-        void* m_hwnd = nullptr;
+        NativeWindowHandle m_hwnd = nullptr;
     };
 
 

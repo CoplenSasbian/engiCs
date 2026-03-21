@@ -23,6 +23,7 @@ include(source.cmake)
 
 set(BUILD_TESTING ON)
 add_subdirectory ("ecs")
+add_subdirectory("renderer")
 add_subdirectory ("game")
 
 
