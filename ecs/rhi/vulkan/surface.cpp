@@ -9,7 +9,8 @@ nx::VkSurface::VkSurface(vk::Instance& i, vk::SurfaceKHR&& s)
 
 nx::VkSurface::~VkSurface()
 {
-	m_instance.destroySurfaceKHR(m_surface, GetVulkanAllocatorCallbacks());
+	if(m_surface)
+		m_instance.destroySurfaceKHR(m_surface, GetVulkanAllocatorCallbacks());
 }
 
 const vk::SurfaceKHR& nx::VkSurface::Get() const

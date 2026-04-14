@@ -117,7 +117,7 @@ nx::Error nx::VkSwapChain::Create(uint32_t w, uint32_t h) noexcept
 	auto& vkSurface = surface->Get();
     auto surface_capabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(vkSurface);
 	if (surface_capabilities.minImageCount == 0) {
-		return make_error_code(EcsErrc::Retry);
+		return nx::Unexpected(nx::make_error_code(EcsErrc::Retry));
 	}
 	auto surface_formats = m_physicalDevice.getSurfaceFormatsKHR(vkSurface);
 	auto present_modes = m_physicalDevice.getSurfacePresentModesKHR(vkSurface);
@@ -137,7 +137,7 @@ nx::Error nx::VkSwapChain::Create(uint32_t w, uint32_t h) noexcept
 	          .setImageArrayLayers(1)
 	          .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
 
-	VK_RETURN_ON_ERROR( m_device.createSwapchainKHR(&createInfo, GetVulkanAllocatorCallbacks(), &m_swapChain));
+	VK_RETURN_IF_ERROR( m_device.createSwapchainKHR(&createInfo, GetVulkanAllocatorCallbacks(), &m_swapChain));
 
 	auto images = m_device.getSwapchainImagesKHR(m_swapChain);
 
@@ -158,7 +158,7 @@ nx::Error nx::VkSwapChain::Create(uint32_t w, uint32_t h) noexcept
 	};
 	for (auto& i : images)
 	{
-		auto & image = m_swapChainImages.emplace_back(make_common_ptr<VkImage>(m_device, imageCreateInfo, std::move(i)));
+		auto & image = m_swapChainImages.emplace_back(MakeCommonPtr<VkImage>(m_device, imageCreateInfo, std::move(i)));
 
 		ImageViewCreateInfo viewCreateInfo{
 			.viewType = EImageViewType::e2D,
@@ -176,7 +176,7 @@ nx::Error nx::VkSwapChain::Create(uint32_t w, uint32_t h) noexcept
 			}
 		};
 		auto ret = image->CreateView(viewCreateInfo);
-		if (!ret) return ret.error();
+		if (!ret) return nx::Unexpected(ret.error());
 		m_swapChainImageViews.emplace_back(std::move(ret.value()));
 	}
 

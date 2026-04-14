@@ -15,6 +15,7 @@ namespace nx
         Error SentMessage(void* rawEvent) noexcept override;
         ~Win32EventLoop() override;
     private:
+        static Win32EventLoop*& GetCurrentThreadLoop()noexcept;
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
             WPARAM wParam, LPARAM lParam) noexcept;
     };

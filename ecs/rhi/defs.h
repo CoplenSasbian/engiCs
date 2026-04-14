@@ -77,6 +77,7 @@ namespace nx
 
     enum class EPixelFormat : uint8_t
     {
+        eUnknown,
         eR8G8B8A8Unorm,
         eB8G8R8A8Unorm,
         eR16G16B16A16Sfloat,
@@ -179,7 +180,7 @@ namespace nx
     enum class ESampleCountFlagBits : uint8_t{
         e1 = 1,
         e2 = 1<< 1,
-        e3 = 1<< 2,
+        e4 = 1<< 2,
         e8 = 1<< 3,
         e16= 1<< 4,
         e32= 1<< 5,
@@ -217,4 +218,123 @@ namespace nx
         Depth,       
         DepthStencil,
     };
+
+    enum class EPolygonMode
+    {
+        eFill,
+        eLine,
+    };
+
+    enum class ECullMode
+    {
+        eNone = 0,
+        eFront= 1,
+        eBack= 1<< 1,
+        eFrontAndBack = eFront | eBack
+    };
+
+    enum class EFrontFace
+    {
+        eClockwise,
+        eCounterClockwise
+    };
+
+
+    enum class EBlendFactor : uint8_t {
+        eZero,
+        eOne,
+        eSrcColor,
+        eInvSrcColor,
+        eDstColor,
+        eInvDstColor,
+        eSrcAlpha,
+        eInvSrcAlpha,
+        eDstAlpha,
+        eInvDstAlpha,
+        eConstantColor,
+        eInvConstantColor,
+        eConstantAlpha,
+        eInvConstantAlpha,
+        eSrcAlphaSaturate
+    };
+
+    enum class EBlendOp : uint8_t {
+        eAdd,
+        eSubtract,
+        eRevSubtract,
+        eMin,
+        eMax
+    };
+
+    enum class ECompareOp : uint8_t {
+        eNever,
+        eLess,
+        eEqual,
+        eLessEqual,
+        eGreater,
+        eNotEqual,
+        eGreaterEqual,
+        eAlways
+    };
+
+    enum class EStencilOp : uint8_t {
+        eKeep,
+        eZero,
+        eReplace,
+        eIncrementClamp,
+        eDecrementClamp,
+        eInvert,
+        eIncrementWrap,
+        eDecrementWrap
+    };
+
+    enum class EColorWriteMaskFlagBits : uint8_t {
+        eNone   = 0,
+        eR      = 1 << 0,
+        eG      = 1 << 1,
+        eB      = 1 << 2,
+        eA      = 1 << 3,
+        eAll    = eR | eG | eB | eA
+    };
+    using EColorWriteMaskFlags = Flag<EColorWriteMaskFlagBits>;
+
+
+    enum class EShaderStageFlagBits : uint32_t {
+        eNone       = 0,
+        eVertex     = 1 << 0,
+        eFragment   = 1 << 1, // DX12 Pixel
+        eCompute    = 1 << 2,
+        eGeometry   = 1 << 3,
+        eTessControl= 1 << 4,
+        eTessEval   = 1 << 5,
+        eAllGraphics = eVertex | eFragment | eGeometry | eTessControl | eTessEval,
+        eAll        = eAllGraphics | eCompute
+    };
+    using EShaderStageFlags = Flag<EShaderStageFlagBits>;
+
+    enum class EResourceTypeFlagBits : uint8_t {
+        eUniformBuffer  = 1 << 0,
+        eSampler        = 1 << 1,
+        eTextureSRV     = 1 << 2,
+        eTextureUAV     = 1 << 3,
+        eBufferSRV      = 1 << 4,
+        eBufferUAV      = 1 << 5
+    };
+    using EResourceTypeFlags = Flag<EResourceTypeFlagBits>;
+
+
+    enum class EResourceType
+    {
+        eConstantBuffer, eTexture, eSampler, eStorageTexture
+    };
+
+    enum class EPrimitiveTopology
+    {
+        ePointList,
+        eLineList,
+        eLineStrip,
+        eTriangleList,
+        eTriangleStrip,
+    };
+
 }

@@ -21,7 +21,7 @@ nx::Error nx::MessageLoopBase::PostTask(Task&& task) noexcept
 {
     if (m_impl->m_taskQueue.enqueue(std::move(task)))
     {
-        return make_error_code(EcsErrc::QueueFull);
+        return nx::Unexpected(nx::make_error_code(EcsErrc::QueueFull));
     }
     return Succeeded;
 }

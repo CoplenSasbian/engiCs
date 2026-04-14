@@ -25,6 +25,17 @@ namespace nx
 #endif
 
 
+	class SpvRefCategory :public std::error_category {
+	public:
+		[[nodiscard]] const char* name() const noexcept override;;
+		[[nodiscard]] std::string message(int code) const override;;
+	};
+
+	const std::error_category& gSpvRefCategory()noexcept;
+
+
+	std::error_code makeSpvErrorCode(int e) noexcept;
+
 }
 
 namespace std {
@@ -32,10 +43,10 @@ namespace std {
 	struct is_error_code_enum<nx::EcsRhiCategory> : true_type {};
 }
 #if HasVulkan
-#define VK_RETURN_ON_ERROR(expr) if(vk::Result _err = (expr); _err != vk::Result::eSuccess) { return nx::make_error_code(_err); }
-#define C_VK_RETURN_ON_ERROR(expr) if(VkResult _err = (expr); _err != VK_SUCCESS) { return nx::make_error_code(_err); }
+#define VK_RETURN_IF_ERROR(expr) if(vk::Result _err = (expr); _err != vk::Result::eSuccess) { return nx::Unexpected(nx::make_error_code(_err)); }
+#define C_VK_RETURN_ON_ERROR(expr) if(VkResult _err = (expr); _err != VK_SUCCESS) { return nx::Unexpected(nx::make_error_code(_err)); }
 
-#define VK_UNEXPECTED_ON_ERROR(expr) if(vk::Result _err = (expr); _err != vk::Result::eSuccess) { return Unexpected(nx::make_error_code(_err)); }
-#define C_VK_UNEXPECTED_ON_ERROR(expr) if(VkResult _err = (expr); _err != VK_SUCCESS) { return Unexpected(nx::make_error_code(_err)); }
+#define VK_UNEXPECT_ON_ERROR(expr) if(vk::Result _err = (expr); _err != vk::Result::eSuccess) { return nx::Unexpected(nx::make_error_code(_err)); }
+#define C_VK_UNEXPECT_ON_ERROR(expr) if(VkResult _err = (expr); _err != VK_SUCCESS) { return nx::Unexpected(nx::make_error_code(_err)); }
 
 #endif

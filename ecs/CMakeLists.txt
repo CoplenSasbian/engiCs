@@ -1,13 +1,12 @@
 
 
-
 find_package(mimalloc CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(Vulkan REQUIRED)
+find_package(Vulkan  REQUIRED)
 find_package(lua CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS  container asio  locale)
-
+#find_package(RiftenDeque REQUIRED)
 find_path(SQLITE_MODERN_CPP_INCLUDE_DIRS "sqlite_modern_cpp.h")
 find_path(PLF_HIVE_INCLUDE_DIRS "plf_hive.h")
 find_path(SOL2_INCLUDE_DIRS "sol/sol.hpp")
@@ -57,6 +56,8 @@ target_link_libraries(ecs PRIVATE
         unofficial::sqlite3::sqlite3
         spdlog::spdlog
         Vulkan::Vulkan
+        spirv-reflect-static
+        RiftenDeque
         PUBLIC
         STDEXEC::stdexec
 

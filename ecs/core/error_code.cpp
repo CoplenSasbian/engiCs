@@ -38,6 +38,12 @@ std::string nx::EcsCategory::message(int code) const
         return "Not available window";
     case EcsErrc::Retry:
 		return "Retry";
+    case EcsErrc::UnsuppotShaderType:
+        return "Shader type not suppot";
+    case EcsErrc::VertexShaderNotFound:
+        return "Vertex shader not found";
+    case EcsErrc::InvalidQueueType:
+        return "Invalid queue type";
     case EcsErrc::UnknownError:
     default:
         return "Unknown";
@@ -54,6 +60,8 @@ std::error_code nx::make_error_code(EcsErrc e)
 {
     return std::error_code{static_cast<int>(e), gCoreCategory()};
 }
+
+nx::Error nx::Succeeded{};
 
 
 

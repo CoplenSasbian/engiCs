@@ -10,6 +10,7 @@ namespace nx
 	class VkBuffer : public RhiBuffer
 	{
 	public:
+		static Result<CommonPtr<VkBuffer>> DeviceCreate(vk::Device& d, const BufferCreateInfo& tinfo)noexcept;
 		VkBuffer(vk::Device&, const BufferCreateInfo& createInfo, vk::Buffer&& buffer);
 		~VkBuffer();
 		Result<std::unique_ptr<RhiBufferView>> CreateView(const BufferViewCreateInfo& createInfo) noexcept override;
@@ -36,6 +37,9 @@ namespace nx
 	class VkImage : public RhiImage
 	{
 	public:
+		static Result<CommonPtr<VkImage>> DeviceCreate(vk::Device& d, const ImageCreateInfo& tinfo)noexcept;
+
+
 		VkImage(vk::Device& ,const ImageCreateInfo& createInfo, vk::Image&& image);
 		~VkImage()override;
 		Result<CommonPtr<RhiImageView>> CreateView(const ImageViewCreateInfo& createInfo) noexcept override;

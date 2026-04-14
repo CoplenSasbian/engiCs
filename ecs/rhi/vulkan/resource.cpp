@@ -7,6 +7,20 @@
 
 
 
+nx::Result<nx::CommonPtr<nx::VkBuffer>> nx::VkBuffer::DeviceCreate(vk::Device& d, const BufferCreateInfo& tInfo) noexcept
+{
+
+	vk::BufferCreateInfo info;
+	info.setUsage(ToVulkan(tInfo.usage))
+		.setSize(tInfo.size);
+
+	vk::Buffer buffer;
+
+	VK_UNEXPECT_ON_ERROR(d.createBuffer(&info, GetVulkanAllocatorCallbacks(), &buffer));
+
+	return MakeCommonPtr<VkBuffer>(d, tInfo, std::move(buffer));
+}
+
 nx::VkBuffer::VkBuffer(vk::Device& d, const BufferCreateInfo& createInfo, vk::Buffer&& buffer)
 	:m_device(d),m_createInfo(createInfo), m_buffer(std::move(buffer))
 {
@@ -28,9 +42,25 @@ nx::Result<std::unique_ptr<nx::RhiBufferView>> nx::VkBuffer::CreateView(const Bu
 		.setBuffer(m_buffer);
 
 	vk::BufferView bufferView;
-	VK_UNEXPECTED_ON_ERROR(m_device.createBufferView(&vkCreateInfo, GetVulkanAllocatorCallbacks(), &bufferView));
+	VK_UNEXPECT_ON_ERROR(m_device.createBufferView(&vkCreateInfo, GetVulkanAllocatorCallbacks(), &bufferView));
 	return std::make_unique<VkBufferView>(m_device, this, createInfo, std::move(bufferView));
 
+}
+
+nx::Result<nx::CommonPtr<nx::VkImage>> nx::VkImage::DeviceCreate(vk::Device& d, const ImageCreateInfo& info)noexcept
+{
+	vk::ImageCreateInfo createInfo{};
+	createInfo.setExtent(vk::Extent3D{ info.width,info.height,info.depth })
+		.setMipLevels(info.mipLevels)
+		.setArrayLayers(info.arrayLayers)
+		.setFormat(ToVulkan(info.format))
+		.setUsage(ToVulkan(info.usage));
+
+	vk::Image image;
+
+	VK_UNEXPECT_ON_ERROR(d.createImage(&createInfo, GetVulkanAllocatorCallbacks(), &image));
+
+	return MakeCommonPtr<VkImage>(d, info, std::move(image));
 }
 
 nx::VkImage::VkImage(vk::Device& d, const ImageCreateInfo& createInfo, vk::Image&& image)
@@ -67,9 +97,9 @@ nx::Result<nx::CommonPtr<nx::RhiImageView>> nx::VkImage::CreateView(
 		);
 
 	vk::ImageView imageView;
-	VK_UNEXPECTED_ON_ERROR(m_device.createImageView(&vkCreateInfo, GetVulkanAllocatorCallbacks(), &imageView));
+	VK_UNEXPECT_ON_ERROR(m_device.createImageView(&vkCreateInfo, GetVulkanAllocatorCallbacks(), &imageView));
 
-	return make_common_ptr<VkImageView>(m_device,this, createInfo, std::move(imageView));
+	return MakeCommonPtr<VkImageView>(m_device,this, createInfo, std::move(imageView));
 
 }
 

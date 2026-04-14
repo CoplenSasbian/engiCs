@@ -40,7 +40,7 @@ namespace renderer
         nx::IWindow* m_window;
         nx::CommonPtr<nx::RhiInstance> m_instance;
         nx::CommonPtr<nx::RhiSurface> m_surface;
-        nx::CommonPtr<nx::RhiDevice> m_device;
+        nx::CommonPtr<nx::RhiContext> m_device;
         nx::CommonPtr<nx::RhiSwapChain> m_swapChain;
     };
 }

@@ -4,10 +4,6 @@
 #include <optional>
 #include <system_error>
 
-
-
-
-
 namespace nx
 {
     enum class EcsErrc
@@ -24,9 +20,12 @@ namespace nx
         InvalidThreadToken,
         InvalidThreadType,
         QueueFull,
+        InvalidQueueType,
         NotAvailableWindow,
 
-		Retry,
+        Retry,
+        UnsuppotShaderType,
+        VertexShaderNotFound,
 
         UnknownError = -1,
     };
@@ -43,8 +42,8 @@ namespace nx
 
     std::error_code make_error_code(EcsErrc e);
 
-    using Error = std::optional<std::error_code> ;
-    constexpr std::nullopt_t Succeeded = std::nullopt;
+    using Error = std::expected<void, std::error_code>;
+    extern Error Succeeded;
 
 
     template<typename T>
@@ -57,11 +56,7 @@ namespace nx
 
 #if defined(WIN32)
     std::error_code make_system_error();
-
 #endif
-
-
-
 
 }
 
@@ -71,7 +66,24 @@ namespace std {
 }
 
 
-#define RETURN_ON_ERROR(expr) do { auto _err = (expr); if (_err) { return _err; } } while(0)
+#define RETURN_ON_ERROR(expr) do { auto _err = (expr); if (!_err) { return nx::Unexpected(_err.error()); } } while(0)
+#define ASSIGN_OR_RETURN_ERROR(lhs, expr) do { auto&& _res = (expr); if (!_res.has_value()) { return nx::Unexpected(_res.error()); } (lhs) = std::move(_res.value()); } while (0)
 
 
-#define ASSIGN_OR_RETURN(lhs, expr) do { auto&& _res = (expr); if (!_res.has_value()) { return _res.error(); } (lhs) = std::move(_res.value()); } while (0)
+
+#ifdef  NDEBUG
+    #define ECS_DEBUGBREAK() abort();
+#else
+    #if defined(_MSC_VER)
+        #define ECS_DEBUGBREAK() __debugbreak()
+    #else
+        #define ECS_DEBUGBREAK()  __builtin_trap(); 
+    #endif
+#endif
+
+
+#ifdef NDEBUG
+    #define ECS_ASSERT(expr) [[assume(expr)]]
+#else
+    #define ECS_ASSERT(expr)if (!(expr)) { ECS_DEBUGBREAK(); } 
+#endif // DEBUG

@@ -1,5 +1,5 @@
 #include "instance.h"
-#include "device.h"
+#include "context.h"
 #include "config.h"
 
 #include <Windows.h>
@@ -47,7 +47,7 @@ nx::Error nx::VkInstance::Initialize(const std::string& appName) noexcept
         extensions.data()
     );
 
-    VK_RETURN_ON_ERROR(vk::createInstance(&createInfo,GetVulkanAllocatorCallbacks(),& m_instance));
+    VK_RETURN_IF_ERROR(vk::createInstance(&createInfo,GetVulkanAllocatorCallbacks(),& m_instance));
     return  Succeeded;
 }
 
@@ -61,22 +61,22 @@ nx::Result<nx::CommonPtr<nx::RhiSurface>> nx::VkInstance::CreateSurface(void* na
         .hwnd = static_cast<HWND>(nativeWindowHandle)
     };
     VkSurfaceKHR surface;
-    C_VK_UNEXPECTED_ON_ERROR(vkCreateWin32SurfaceKHR(
+    C_VK_UNEXPECT_ON_ERROR(vkCreateWin32SurfaceKHR(
         m_instance,
         &createInfo,
         (VkAllocationCallbacks*)GetVulkanAllocatorCallbacks(),
         &surface
     ));
 
-    return  make_common_ptr<VkSurface>(m_instance, std::move(surface));
+    return  MakeCommonPtr<VkSurface>(m_instance, std::move(surface));
 
 #endif // WIN32
 
 }
 
-nx::Result<nx::CommonPtr<nx::RhiDevice>> nx::VkInstance::CreateDevice() noexcept
+nx::Result<nx::CommonPtr<nx::RhiContext>> nx::VkInstance::CreateContext() noexcept
 {
-    return make_common_ptr<VkDevice>(m_instance);
+    return MakeCommonPtr<VkContext>(m_instance);
 }
 
 nx::VkInstance::VkInstance()

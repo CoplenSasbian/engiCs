@@ -5,7 +5,7 @@
 namespace nx {
 	class VkRenderPass:public RhiRenderPass {
 	public:
-
+		static nx::Result<nx::CommonPtr<nx::RhiRenderPass>> DeviceCreate(vk::Device& d, const RenderPassCreateInfo& tInfo) noexcept;
 		VkRenderPass(vk::Device& device, vk::RenderPass&& renderPass);
 		~VkRenderPass() override;
 	private:

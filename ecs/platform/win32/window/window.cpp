@@ -1,7 +1,6 @@
 #include "window.h"
-#include <assert.h>
 #include <Windows.h>
-#include <system_error>
+
 
 #if defined(_MSC_VER)
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
@@ -28,7 +27,7 @@ nx::Error nx::Win32Window::Create(String title, const Rect& rect) noexcept
 
     if (!m_hwnd)
     {
-		return make_system_error();
+		return nx::Unexpected(nx::make_system_error());
     }
 
     return Succeeded;
@@ -37,7 +36,7 @@ nx::Error nx::Win32Window::Create(String title, const Rect& rect) noexcept
 void nx::Win32Window::Activate() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     ::SetFocus(hwnd);
     ::UpdateWindow(hwnd);
 }
@@ -45,21 +44,21 @@ void nx::Win32Window::Activate() noexcept
 void nx::Win32Window::Close() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     CloseWindow(hwnd);
 }
 
 void nx::Win32Window::Destroy() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     ::DestroyWindow(hwnd);
 }
 
 nx::Result<nx::Rect> nx::Win32Window::GetClientArea() const noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if ( Rect rect;::GetClientRect(hwnd,reinterpret_cast<RECT*>(&rect)))
     {
         return  rect;
@@ -70,7 +69,7 @@ nx::Result<nx::Rect> nx::Win32Window::GetClientArea() const noexcept
 nx::Result<nx::Rect> nx::Win32Window::GetWindowArea() const noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
 
     if ( Rect rect;::GetWindowRect(hwnd,reinterpret_cast<RECT*>(&rect)))
     {
@@ -82,7 +81,7 @@ nx::Result<nx::Rect> nx::Win32Window::GetWindowArea() const noexcept
 bool nx::Win32Window::IsVisible() const noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     LONG style = ::GetWindowLong(hwnd,GWL_STYLE);
     return style & WS_VISIBLE;
 }
@@ -90,23 +89,23 @@ bool nx::Win32Window::IsVisible() const noexcept
 nx::Error nx::Win32Window::Maximize() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if (ShowWindow(hwnd,SW_MAXIMIZE))
     {
         return Succeeded;
     }
-    return  make_system_error();
+    return  nx::Unexpected(nx::make_system_error());
 }
 
 nx::Error nx::Win32Window::Minimize() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if (ShowWindow(hwnd,SW_MINIMIZE))
     {
         return Succeeded;
     }
-    return  make_system_error();
+    return  nx::Unexpected(nx::make_system_error());
 }
 
 nx::NativeWindowHandle nx::Win32Window::NativeHandle() const noexcept
@@ -117,34 +116,34 @@ nx::NativeWindowHandle nx::Win32Window::NativeHandle() const noexcept
 nx::Error nx::Win32Window::Restore() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if (ShowWindow(hwnd,SW_RESTORE))
     {
         return Succeeded;
     }
-    return make_system_error();
+    return nx::Unexpected(nx::make_system_error());
 }
 
 nx::Error nx::Win32Window::SetVisible(bool show) noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if (ShowWindow(hwnd,show?SW_SHOW:SW_HIDE))
     {
         return Succeeded;
     }
-    return  make_system_error();
+    return  nx::Unexpected(nx::make_system_error());
 }
 
 nx::Error nx::Win32Window::SetWindowArea(const Rect& rect) noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
-    assert(hwnd);
+    ECS_ASSERT(hwnd);
     if (::SetWindowPos(hwnd,NULL,rect.x,rect.y,rect.width,rect.height,SWP_NOZORDER))
     {
         return Succeeded;
     }
-    return make_system_error();
+    return nx::Unexpected(nx::make_system_error());
 }
 
 

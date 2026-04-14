@@ -33,7 +33,7 @@ static nx::Result<std::vector<ProcessorInfo> > _CollectProcessInfo() noexcept
             RelationProcessorCore, nullptr, &bufferSize);
         if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
         {
-            err = nx::make_system_error();
+            err = nx::Unexpected(nx::make_system_error());
             return;
         }
 
@@ -44,7 +44,7 @@ static nx::Result<std::vector<ProcessorInfo> > _CollectProcessInfo() noexcept
             RelationProcessorCore, ptr, &bufferSize);
         if (!res)
         {
-            err = nx::make_system_error();
+            err = nx::Unexpected(nx::make_system_error());
             return;
         }
 
@@ -83,8 +83,8 @@ static nx::Result<std::vector<ProcessorInfo> > _CollectProcessInfo() noexcept
     });
 
 
-    if (err)
-        return  nx::Unexpected(err.value());
+    if (!err)
+        return  nx::Unexpected(err.error());
 
     return result;
 }
@@ -101,7 +101,7 @@ nx::Result<std::span<uint64_t>> nx::GetCoreMask(CoreEfficiencyClass c) noexcept
         auto ret = _CollectProcessInfo();
         if (!ret)
         {
-            err = ret.error();
+            err = nx::Unexpected(ret.error());
             return;
         }
 
@@ -124,9 +124,9 @@ nx::Result<std::span<uint64_t>> nx::GetCoreMask(CoreEfficiencyClass c) noexcept
         );
     });
 
-    if ( err)
+    if (!err)
     {
-        return nx::Unexpected(err.value());
+        return nx::Unexpected(err.error());
     }
 
     return c == High ? high : low;

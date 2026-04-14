@@ -43,7 +43,7 @@ nx::Error nx::EventLoop::PostTask(Task&& task) noexcept
 {
    if (m_impl->m_ctx.stopped())
    {
-       return make_error_code(EcsErrc::LoopStopped);
+       return nx::Unexpected(nx::make_error_code(EcsErrc::LoopStopped));
    }
 
     boost::asio::post(m_impl->m_ctx, std::move(task));

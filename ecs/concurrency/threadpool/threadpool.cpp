@@ -81,7 +81,7 @@ nx::Error nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
         }
         else
         {
-            ret = make_error_code(EcsErrc::InvalidThreadToken);
+            ret = nx::Unexpected(nx::make_error_code(EcsErrc::InvalidThreadToken));
         }
     }
     else
@@ -96,7 +96,7 @@ nx::Error nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
             ret = m_es.PostTask(std::move(task));
             break;
         default:
-            ret = make_error_code(EcsErrc::InvalidThreadType);
+            ret = nx::Unexpected(nx::make_error_code(EcsErrc::InvalidThreadType));
         }
     }
 

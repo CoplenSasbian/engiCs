@@ -18,7 +18,7 @@ game::App::App(int argc, char** argv)
     }
     auto highCore = ret.value();
 
-    m_threadpool = nx::make_common_ptr<nx::Threadpool>(
+    m_threadpool = nx::MakeCommonPtr<nx::Threadpool>(
         highCore.size(), [&](size_t i)
         {
             nx::SetCurrentThreadAffinity(highCore[i]);
@@ -36,13 +36,14 @@ game::App::App(int argc, char** argv)
         if (res == nx::EMessageBox<Platform>::Result::Yes)
         {
             Quit();
+			return true;
         }
-        return true;
+        return false;
     });
 
-    if (auto ret = m_renderer.Initialize({.name = "app",.mode = renderer::Mode::Editor}, &m_window, renderer::RendererType::Vulkan))
+    if (auto ret = m_renderer.Initialize({.name = "app",.mode = renderer::Mode::Editor}, &m_window, renderer::RendererType::Vulkan); !ret)
     {
-        _logger.Critical(std::format("Get core mask failed :{}", ret.value().message()));
+        _logger.Critical(std::format("Get core mask failed :{}", ret.error().message()));
         std::abort();
     }
 }

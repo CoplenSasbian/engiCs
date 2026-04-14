@@ -100,7 +100,7 @@ namespace nx
         if (ptr != nullptr)
         {
             ptr->~T();
-            mi_free(ptr);
+            ecs_free(ptr);
         }
     }
 
@@ -188,7 +188,7 @@ namespace nx
         && std::is_nothrow_move_constructible_v<T>
         T* allocate(Args&&... args) noexcept
         {
-           Assert(m_allocatedCount < ObjectCount, "The number of allocated objects exceeds the limit!");
+           ECS_ASSERT(m_allocatedCount < ObjectCount);
 
 
             const size_t object_size = sizeof(T);
@@ -196,7 +196,7 @@ namespace nx
             size_t total_bytes_needed;
 
             auto res = allocate_space(object_size,object_alignment,total_bytes_needed);
-            Assert(!!res, "Failed to allocate space for object!");
+            ECS_ASSERT(!!res);
             auto aligned_ptr = res.value();
 
             T* constructed_obj = new(aligned_ptr) T(std::forward<Args>(args)...);
@@ -283,7 +283,7 @@ namespace nx
     using CommonPtr = std::unique_ptr<T,impl::CommonDeleter>;
 
     template<typename T, typename ...Args>
-    CommonPtr<T> make_common_ptr(Args&&... args)
+    CommonPtr<T> MakeCommonPtr(Args&&... args)
     {
         return CommonPtr<T>(new(ecs_malloc(sizeof(T))) T(std::forward<Args>(args)...));
     }

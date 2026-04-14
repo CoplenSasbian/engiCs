@@ -36,7 +36,7 @@ static nx::Error registerDefWindowClass(WNDPROC  proc)
         wndclassexw.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
         if (!RegisterClassEx(&wndclassexw))
         {
-            return nx::make_system_error();
+            return nx::Unexpected(nx::make_system_error());
         }
         registered = true;
     }
@@ -45,24 +45,25 @@ static nx::Error registerDefWindowClass(WNDPROC  proc)
 
 
 
-thread_local  nx::Win32EventLoop* tCurrentEventLoop = nullptr;
 
 nx::Win32EventLoop::Win32EventLoop() noexcept
 : nx::BaseMessageLoop<PlatformWin32>{}
 {
-    if (registerDefWindowClass(WindowProc))
+    if (!registerDefWindowClass(WindowProc))
     {
-        abort();
+		ECS_DEBUGBREAK();
     }
-    tCurrentEventLoop = this;
+    GetCurrentThreadLoop() = this;
 }
 
 bool nx::Win32EventLoop::PoolEvent() noexcept
 {
 
     MSG msg = {};
-    if (::PeekMessageW(&msg, NULL, NULL, NULL, PM_REMOVE))
+
+    if (::PeekMessageW(&msg, nullptr, NULL, NULL, PM_REMOVE))
     {
+       
         ::TranslateMessage(&msg);
         ::DispatchMessageW(&msg);
     }
@@ -83,12 +84,18 @@ nx::Error nx::Win32EventLoop::SentMessage(void* rawEvent) noexcept
     {
        return Succeeded;
     }
-    return make_system_error();
+    return nx::Unexpected(nx::make_system_error());
 }
 
 nx::Win32EventLoop::~Win32EventLoop()
 {
-    tCurrentEventLoop = nullptr;
+        GetCurrentThreadLoop() = nullptr;
+}
+
+nx::Win32EventLoop*& nx::Win32EventLoop::GetCurrentThreadLoop() noexcept
+{
+    thread_local  Win32EventLoop* tCurrentLoop = nullptr;
+    return tCurrentLoop;
 }
 
 
@@ -102,10 +109,11 @@ LRESULT CALLBACK nx::Win32EventLoop::WindowProc(HWND hwnd, UINT uMsg, WPARAM wPa
     }
 
     MSG msg = {hwnd, uMsg, wParam, lParam };
-    if (tCurrentEventLoop->dispatch(&msg, uMsg))
+    if (GetCurrentThreadLoop()->dispatch(&msg, uMsg))
     {
         return ::DefWindowProc(static_cast<HWND>(hwnd), uMsg, wParam, lParam);
     }
+
     return S_OK;
 }
 

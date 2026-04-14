@@ -17,7 +17,7 @@ int main()
     nx::Window<pl> window{};
     if (auto err= window.Create(nx::String::from("app"), { 100,100,800,600 }))
     {
-        std::println(stderr,"Create window error： {}",err.value().message());
+        std::println(stderr,"Create window error： {}",err.error().message());
         abort();
     }
     window.SetVisible(true);

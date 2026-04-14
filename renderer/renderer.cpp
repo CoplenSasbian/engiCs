@@ -13,9 +13,9 @@ nx::Error renderer::Renderer::Initialize(const AppInfo& appInfo, nx::IWindow* wi
     }
 
     RETURN_ON_ERROR( m_instance->Initialize(appInfo.name));
-    ASSIGN_OR_RETURN(m_device,m_instance->CreateDevice());
-    ASSIGN_OR_RETURN(m_surface,m_instance->CreateSurface(window->NativeHandle()));
-    ASSIGN_OR_RETURN(m_swapChain,m_device->CreateSwapChain(m_surface.get()));
+    ASSIGN_OR_RETURN_ERROR(m_device,m_instance->CreateContext());
+    ASSIGN_OR_RETURN_ERROR(m_surface,m_instance->CreateSurface(window->NativeHandle()));
+    ASSIGN_OR_RETURN_ERROR(m_swapChain,m_device->CreateSwapChain(m_surface.get()));
     return nx::Succeeded;
 }
 

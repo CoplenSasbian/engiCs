@@ -28,7 +28,7 @@ int main()
         [&]()
         {
             std::this_thread::sleep_for(1s);
-            ts.Start(1s, 1s);
+            auto res = ts.Start(1s, 1s);
         }
     };
     t.detach();

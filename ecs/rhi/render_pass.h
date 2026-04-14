@@ -66,7 +66,7 @@ namespace nx {
 	};
 
 	struct RenderPassDependency {
-		static constexpr  auto EXTERNAL_PASS = std::numeric_limits<uint32_t> ::max();
+		static constexpr  auto EXTERNAL_PASS = 0xffffffff;
 		uint32_t srcSubpass;
 		uint32_t dstSubpass;
 		EImageLayout srcLayout;
@@ -83,8 +83,8 @@ namespace nx {
 
 class RenderPassBuilder {
 public:
-    static constexpr uint32_t UNUSED_ATTACHMENT = std::numeric_limits<uint32_t>::max();
-    static constexpr uint32_t EXTERNAL_SUBPASS  = std::numeric_limits<uint32_t>::max();
+    static constexpr uint32_t UNUSED_ATTACHMENT = ~0u;
+    static constexpr uint32_t EXTERNAL_SUBPASS  = ~0u;
 
     uint32_t AddAttachment(std::string name, const AttachmentDesc& desc);
     uint32_t AddAttachment(const AttachmentDesc& desc); // 无名附件

@@ -11,7 +11,7 @@ namespace nx
         ~VkInstance() override;
         Error Initialize(const std::string& appName) noexcept override;
         Result<CommonPtr<RhiSurface>> CreateSurface(void* nativeWindowHandle) noexcept override;
-        Result<CommonPtr<RhiDevice>> CreateDevice() noexcept override;
+        Result<CommonPtr<RhiContext>> CreateContext() noexcept override;
 
         [[nodiscard]] const vk::Instance& Get()const noexcept;
         [[nodiscard]] uint32_t CurrentVulkanVersion()const noexcept;

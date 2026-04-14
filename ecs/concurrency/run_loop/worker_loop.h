@@ -2,7 +2,7 @@
 #include "core/types/class_def.h"
 #include <functional>
 #include <condition_variable>
-#include "core/container/concurrent_queue.h"
+#include "riften/deque.hpp"
 
 namespace nx
 {
@@ -35,22 +35,19 @@ namespace nx
 
         void Notify()
         {
-            if ( waiting)
-            {
-                cv.notify_one();
-            }
+            cv.notify_one();
         }
 
 
         bool Product(Task&& task)
         {
-            auto  success = queue.enqueue(producerToken, std::move(task));
+            auto  success = queue.try_enqueue(producerToken, std::move(task));
             if ( success) Notify();
             return  success;
         }
         bool ProductFromOtherThread(Task&&  task)
         {
-            auto  success = queue.enqueue(producerToken, std::move(task));
+            auto  success = queue.try_enqueue(producerToken, std::move(task));
             if ( success) Notify();
             return  success;
         }
@@ -77,7 +74,6 @@ namespace nx
         std::pmr::vector<TaskQueue::consumer_token_t> consumerTokens{};
         std::mutex mutex;
         std::condition_variable cv;
-        std::atomic_bool waiting;
     };
 
 
@@ -94,6 +90,7 @@ namespace nx
         ~WorkerLoop() ;
 
     private:
+        static int& GetCurrentThreadIndex()noexcept;
         std::pmr::vector<ThreadPack> m_threads{};
         TaskQueue m_globalTaskQueue{};
         std::pmr::memory_resource* m_resource;
