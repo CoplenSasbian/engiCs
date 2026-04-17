@@ -5,3 +5,6 @@
 	path = thirdparty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
 
+[submodule "thirdparty/ConcurrentDeque"]
+	path = thirdparty/ConcurrentDeque
+	url = https://github.com/ConorWilliams/ConcurrentDeque.git

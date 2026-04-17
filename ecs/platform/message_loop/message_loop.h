@@ -7,6 +7,7 @@
 #include "core/utils/sso_any.h"
 #include "core/memory/memory.h"
 #include "event_converter.h"
+#include "concurrency/run_loop/task.h"
 namespace nx
 {
     template <PlatformMagic platform>
@@ -123,13 +124,29 @@ namespace nx
     };
     class IMessageLoop{
     public:
+		IMessageLoop(std::pmr::memory_resource* resource = std::pmr::get_default_resource()) noexcept : m_memResource(resource) {}
+
         virtual ~IMessageLoop() = default;
-        using Task = std::function<void()>;
         virtual void Run() = 0;
-        virtual  Error PostTask(Task&&) noexcept = 0;
+
+		template<TaskCallable Callable>
+        Error PostTask(Callable&& task) noexcept
+        {
+            auto taskWrapper = MakeTask(std::forward<Callable>(task), m_memResource);
+            auto errc = PostTaskP(taskWrapper);
+            if (!errc) {
+                taskWrapper->Destroy();
+            }
+            return errc;
+        }
+
+        virtual  Error PostTaskP(Task*) noexcept = 0;
         virtual void PostQuit() noexcept =0;
         virtual bool PoolEvent()noexcept =0;
         virtual Error SentMessage(void* rawEvent) noexcept = 0;
+
+    private:
+		std::pmr::memory_resource* m_memResource;
 
     };
 
@@ -140,9 +157,9 @@ namespace nx
     public:
 
         using Any = nx::SsoAny<scheduler_size>;
-        MessageLoopBase() noexcept;
+        MessageLoopBase(std::pmr::memory_resource* resource = std::pmr::get_default_resource()) noexcept;
         ~MessageLoopBase() override = default;
-        Error PostTask(Task&&) noexcept override;
+        Error PostTaskP(Task*) noexcept override;
         void Run()noexcept override;
     protected:
         bool dispatch(void* raw_event_data, PlatformMessageType msg) noexcept;
@@ -178,6 +195,14 @@ namespace nx
             auto* scheduler = _get_or_create_scheduler<Et>();
             scheduler->AddListener(std::move(listener));
         }
+        template<typename EventType, typename Class>
+        void On(void (Class::* mem_func)(const EventType&), Class* obj) noexcept
+        {
+            On<EventType>([obj, mem_func](const EventType& e) {
+                (obj->*mem_func)(e);
+            });
+        }
+
 
         template <class Et>
         void SetHandler(MessageScheduler<platform, Et>::Handler&& handler)
@@ -185,6 +210,14 @@ namespace nx
             auto* scheduler = _get_or_create_scheduler<Et>();
             scheduler->SetHandler(std::move(handler));
         }
+
+        template<typename EventType, typename Class>
+        void SetHandler(bool (Class::* mem_func)(const EventType&), Class* obj) {
+            SetHandler<EventType>([obj, mem_func](const EventType& e) {
+                return (obj->*mem_func)(e);
+                });
+        }
+        
 
     private:
         template <class Et>

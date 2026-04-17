@@ -39,17 +39,15 @@ void nx::EventLoop::RunOnce() noexcept
     m_impl->m_ctx.run_one();
 }
 
-nx::Error nx::EventLoop::PostTask(Task&& task) noexcept
+nx::Error nx::EventLoop::PostTask(Task* task) noexcept
 {
-   if (m_impl->m_ctx.stopped())
-   {
-       return nx::Unexpected(nx::make_error_code(EcsErrc::LoopStopped));
-   }
-
-    boost::asio::post(m_impl->m_ctx, std::move(task));
+    boost::asio::post(m_impl->m_ctx, [task,this]()
+    {
+        (*task)();
+        task->Destroy();
+	});
     return Succeeded;
 }
-
 nx::EventLoop::~EventLoop() noexcept
 {
     EventLoop::Shutdown();
@@ -72,15 +70,14 @@ nx::Timer::Timer(EventLoop* es) noexcept
 :m_es(es)
 {
     std::pmr::polymorphic_allocator<> alloc;
-    m_impl = alloc.new_object<IMPL>(m_es->m_impl->m_ctx);
+    auto newImpl = alloc.new_object<IMPL>(m_es->m_impl->m_ctx);
+
+	ResetImpl(newImpl);
 }
 
 
 
-void nx::Timer::SetCallback(Task&& cb) noexcept
-{
-    m_cb = std::move(cb);
-}
+
 
 nx::Error nx::Timer::Start(Duration delay, Duration repeat) noexcept
 {
@@ -110,10 +107,30 @@ nx::Error nx::Timer::Start(Duration delay, Duration repeat) noexcept
     return Succeeded;
 }
 
+void nx::Timer::ResetCallback(Task* task) noexcept
+{
+	auto oldCb = std::exchange(m_cb, task);
+    if (oldCb)
+    {
+        oldCb->Destroy();
+	}
+}
+
+void nx::Timer::ResetImpl(IMPL* newImpl) noexcept
+{
+	auto oldImpl = std::exchange(m_impl, newImpl);
+    if (oldImpl)
+    {
+        std::pmr::polymorphic_allocator<IMPL> alloc{m_es->m_memResource};
+        alloc.delete_object(oldImpl);
+	}
+
+}
+
 void nx::Timer::Run() const noexcept
 {
     assert(m_cb);
-    m_cb();
+	(*m_cb)();
 }
 
 void nx::Timer::Stop() noexcept
@@ -129,9 +146,8 @@ void nx::Timer::Shutdown() noexcept
 nx::Timer::~Timer() noexcept
 {
     Shutdown();
-    std::pmr::polymorphic_allocator<IMPL> alloc{m_es->m_memResource};
-    alloc.delete_object(m_impl);
-    m_impl = nullptr;
+    ResetImpl();
+    ResetCallback();
 }
 
 

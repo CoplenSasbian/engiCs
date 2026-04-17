@@ -3,10 +3,9 @@
 #include <functional>
 
 #include "core/error_code.h"
-
+#include "concurrency/run_loop/task.h"
 namespace nx
 {
-    using Task = std::function<void()>;
 
   class Timer ;
 
@@ -17,9 +16,21 @@ namespace nx
         void Shutdown() noexcept ;
         void Run() noexcept;
         void RunOnce() noexcept;
-        Error PostTask(Task&&) noexcept;
+		template<TaskCallable Callable>
+        Error PostTask(Callable&& c) noexcept {
+			auto taskWrapper = MakeTask(std::forward<Callable>(c), m_memResource);
+			auto errc = PostTask(taskWrapper);
+            if (!errc) {
+				taskWrapper->Destroy();
+            }
+            return errc;
+        }
+        Error PostTask(Task* task) noexcept;
         ~EventLoop() noexcept ;
     private:
+
+		
+
         struct IMPL;
         IMPL* m_impl;
 
@@ -35,7 +46,14 @@ namespace nx
         Timer(EventLoop* es) noexcept;
         Timer(Timer&&)noexcept =default;
         Timer& operator=(Timer&&)noexcept =default;
-        void SetCallback(Task&&) noexcept;
+
+		template<TaskCallable Callable>
+        void SetCallback(Callable&& c) noexcept {
+			auto task = nx::MakeTask(std::forward<Callable>(c), m_es->m_memResource);
+			ResetCallback(task);
+        }
+
+
         Error Start(Duration delay, Duration repeat = Duration(0)) noexcept;
         void Run() const noexcept;
         void Stop() noexcept;
@@ -43,10 +61,12 @@ namespace nx
         ~Timer() noexcept ;
 
     private:
+		void ResetCallback(Task* task = nullptr) noexcept;
         struct IMPL;
+        void ResetImpl(IMPL* newImpl = nullptr) noexcept;
         IMPL* m_impl;
         EventLoop* m_es;
-        Task m_cb;
+        Task* m_cb;
     };
 
 

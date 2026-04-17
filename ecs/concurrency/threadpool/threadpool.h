@@ -13,7 +13,6 @@ namespace std::execution
 
 namespace nx
 {
-    using Task = std::function<void()>;
 
     struct Threadpool;
     class ThreadpoolScheduler;
@@ -123,7 +122,20 @@ namespace nx
         ~Threadpool();
         void Shutdown();
 
-        Error PostTask(Task&& task, PostConfig config = AnyThread) noexcept;
+        Error PostTask(Task* task, PostConfig config = AnyThread) noexcept;
+
+		template<TaskCallable Callable>
+		Error PostTask(Callable&& task, PostConfig config = AnyThread) noexcept
+        {
+            auto taskWrapper = MakeTask(std::forward<Callable>(task), m_resource);
+            auto errc = PostTask(taskWrapper, config);
+            if (!errc)
+            {
+                taskWrapper->Destroy();
+            }
+            return errc;
+        }
+
 
         static  TheadToken CurrentThreadToken() noexcept;
 

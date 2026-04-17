@@ -22,8 +22,8 @@ nx::Error nx::Win32Window::Create(String title, const Rect& rect) noexcept
 
 
     m_hwnd =CreateWindowEx(NULL,WND_CLASS_NAME(),title.to_wstring().c_str(),
-        WS_OVERLAPPEDWINDOW|WS_VISIBLE,500,500,
-        500,500,NULL,NULL,::GetModuleHandle(0),this);
+        WS_OVERLAPPEDWINDOW|WS_VISIBLE,rect.x, rect.y,
+        rect.width, rect.height,NULL,NULL,::GetModuleHandle(0),this);
 
     if (!m_hwnd)
     {
@@ -32,7 +32,18 @@ nx::Error nx::Win32Window::Create(String title, const Rect& rect) noexcept
 
     return Succeeded;
 }
+nx::String nx::Win32Window::GetTitle() const noexcept
+{
+    std::wstring title;
+	ECS_ASSERT(m_hwnd);
+    auto len = ::GetWindowTextLengthW(static_cast<HWND>(m_hwnd));
+    title.resize_and_overwrite(len, [&](wchar_t* buffer, size_t size)
+    {
+        return ::GetWindowTextW(static_cast<HWND>(m_hwnd), buffer, static_cast<int>(size + 1));
+	});
 
+	return String::from(title);
+}
 void nx::Win32Window::Activate() noexcept
 {
     HWND hwnd = static_cast<HWND>(m_hwnd);
@@ -186,12 +197,12 @@ nx::IMessageBox::Result fromWinResult(int winResult) {
 
 
 nx::IMessageBox::Result nx::Wind32MessageBox::show(const String& title, const String& message, Icon icon,
-    Button buttons)
+    Button buttons, IWindow* parent )
 {
     UINT style = 0;
 
     style = getWinIcon(icon) | getWinButtons(buttons);
-    auto ret = ::MessageBoxW(NULL,message.to_wstring().c_str(),title.to_wstring().c_str(),style);
+    auto ret = ::MessageBoxW(parent ? static_cast<HWND>(parent->NativeHandle()) : nullptr, message.to_wstring().c_str(), title.to_wstring().c_str(), style);
    return  fromWinResult(ret);
 }
 

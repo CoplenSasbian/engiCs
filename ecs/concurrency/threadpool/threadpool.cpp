@@ -4,7 +4,6 @@
 #include <thread>
 #include <latch>
 #include <core/log/log.h>
-#include "core/container/concurrent_queue.h"
 #include "exec/env.hpp"
 
 
@@ -59,25 +58,24 @@ nx::Threadpool::~Threadpool()
 void nx::Threadpool::Shutdown()
 {
 }
-
-nx::Error nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
+nx::Error nx::Threadpool::PostTask(Task* task, PostConfig config) noexcept
 {
     nx::Error ret = Succeeded;
     if (config.is_any())
     {
-        ret = m_workerLoop.PostTask(std::move(task), -1);
-        if (ret) ret = m_es.PostTask(std::move(task));
+        ret = m_workerLoop.PostTask(task, -1);
+        if (ret) ret = m_es.PostTask(task);
     }
     else if (config.is_thread_token())
     {
         const auto token = config.get_thread_token_uncheck();
         if (token < m_threadNums)
         {
-            ret = m_workerLoop.PostTask(std::move(task), token);
+            ret = m_workerLoop.PostTask(task, token);
         }
         else if (token == static_cast<int>(m_threadNums))
         {
-            ret = m_es.PostTask(std::move(task));
+            ret = m_es.PostTask(task);
         }
         else
         {
@@ -90,10 +88,10 @@ nx::Error nx::Threadpool::PostTask(Task&& task, PostConfig config) noexcept
         switch (type)
         {
         case ThreadType::Compute:
-            ret = m_workerLoop.PostTask(std::move(task), GetAnyThreadToken(type));
+            ret = m_workerLoop.PostTask(task, GetAnyThreadToken(type));
             break;
         case ThreadType::Async:
-            ret = m_es.PostTask(std::move(task));
+            ret = m_es.PostTask(task);
             break;
         default:
             ret = nx::Unexpected(nx::make_error_code(EcsErrc::InvalidThreadType));

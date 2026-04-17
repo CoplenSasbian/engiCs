@@ -1,25 +1,26 @@
 #include "message_loop.h"
 #include <boost/container/flat_map.hpp>
 #include <typeindex>
-#include <core/container/concurrent_queue.h>
 #include "core/error_code.h"
-
-
+#include "concurrency/container/moodycamel/concurrent_queue.h"
+#include "core/log/log.h"
+#include <format>
+LOGGER(message_loop);
 struct nx::MessageLoopBase::Impl {
     boost::container::flat_map<std::type_index, Any> m_converterStorge;
     boost::container::flat_multimap<PlatformMessageType, std::type_index> m_converterIndex;
-    moodycamel::ConcurrentQueue<Task> m_taskQueue;
+    moodycamel::ConcurrentQueue<Task*> m_taskQueue;
 };
 
 
-nx::MessageLoopBase::MessageLoopBase() noexcept
-    : m_impl(m_res.allocate<Impl>())
+nx::MessageLoopBase::MessageLoopBase(std::pmr::memory_resource* resource) noexcept
+    :IMessageLoop(resource), m_impl(m_res.allocate<Impl>())
 {
 }
 
-nx::Error nx::MessageLoopBase::PostTask(Task&& task) noexcept
+nx::Error nx::MessageLoopBase::PostTaskP(Task* task) noexcept
 {
-    if (m_impl->m_taskQueue.enqueue(std::move(task)))
+    if (!m_impl->m_taskQueue.enqueue(task))
     {
         return nx::Unexpected(nx::make_error_code(EcsErrc::QueueFull));
     }
@@ -32,14 +33,20 @@ void nx::MessageLoopBase::Run() noexcept
 {
     while (PoolEvent())
     {
-        for (Task task;m_impl->m_taskQueue.try_dequeue(task);)
+        for (Task* task;m_impl->m_taskQueue.try_dequeue(task);)
         {
             try
             {
-                task();
-            }catch (...)
+                (*task)();
+				task->Destroy();
+            }
+            catch (const std::exception& e)
             {
-
+				_logger.Error(std::format("Exception occurred while executing task in message loop: {}", e.what()));
+            }
+            catch (...)
+            {
+				_logger.Error("Exception occurred while executing task in message loop");
             }
 
         }

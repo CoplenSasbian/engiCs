@@ -12,6 +12,7 @@ namespace nx
         void Activate() noexcept override;
         void Close() noexcept override;
         void Destroy() noexcept override;
+        [[nodiscard]] String GetTitle() const noexcept override;
         [[nodiscard]] Result<Rect> GetClientArea() const noexcept override;
         [[nodiscard]] Result<Rect> GetWindowArea() const noexcept override;
         [[nodiscard]] bool IsVisible() const noexcept override;
@@ -30,7 +31,7 @@ namespace nx
     {
     public:
         ~Wind32MessageBox() override = default;
-        Result show(const String& title, const String& message, Icon icon, Button buttons) override;
+        Result show(const String& title, const String& message, Icon icon, Button buttons, IWindow* parent = nullptr) override;
     };
 
 

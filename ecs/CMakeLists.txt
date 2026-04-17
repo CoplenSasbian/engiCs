@@ -57,7 +57,6 @@ target_link_libraries(ecs PRIVATE
         spdlog::spdlog
         Vulkan::Vulkan
         spirv-reflect-static
-        RiftenDeque
         PUBLIC
         STDEXEC::stdexec
 

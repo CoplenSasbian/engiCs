@@ -2,12 +2,35 @@
 #include <thread>
 #include <format>
 #include <core/log/log.h>
-#include "core/container/concurrent_queue.h"
 #include "core//error_code.h"
 #include "concurrency/utils/pause.h"
 LOGGER(worker_loop);
 
 
+
+nx::detail::ThreadPack::ThreadPack(std::pmr::memory_resource* resource, size_t capacity, TaskQueue& globalQueue)
+	: m_localQueue(capacity, resource), m_globalProducerToken(globalQueue), m_globalConsumerToken(globalQueue)
+{
+}
+
+bool nx::detail::ThreadPack::Empty() const noexcept
+{
+    return m_localQueue.Empty();
+}
+
+bool nx::detail::ThreadPack::Produce(Task* task) noexcept
+{
+	return m_localQueue.Push(task);
+}
+
+nx::Task* nx::detail::ThreadPack::Consume() noexcept
+{
+    return m_localQueue.Pop();
+}
+nx::Task* nx::detail::ThreadPack::Steal() noexcept
+{
+    return m_localQueue.Steal();
+}
 
 constexpr size_t GlobalTaskQueueSize = 1024;
 
@@ -23,10 +46,26 @@ nx::WorkerLoop::WorkerLoop(size_t threadSize, std::pmr::memory_resource* resourc
     m_threads.reserve(m_threadSize);
     for (int i = 0; i < m_threadSize; ++i)
     {
-        m_threads.emplace_back(LocalTaskQueueSize,m_threadSize, m_resource);
+        m_threads.emplace_back(m_resource, LocalTaskQueueSize, m_globalTaskQueue);
     }
 }
+nx::detail::ThreadPack::ThreadPack(ThreadPack&& other) noexcept
+    : m_localQueue(std::move(other.m_localQueue)),
+      m_globalProducerToken(std::move(other.m_globalProducerToken)),
+	m_globalConsumerToken(std::move(other.m_globalConsumerToken))
+{
 
+}
+
+nx::detail::ThreadPack& nx::detail::ThreadPack::operator=(ThreadPack&& other) noexcept
+{
+    if (this != &other) {
+        std::exchange(m_localQueue, std::move(other.m_localQueue));
+        std::exchange(m_globalProducerToken, std::move(other.m_globalProducerToken));
+        std::exchange(m_globalConsumerToken, std::move(other.m_globalConsumerToken));
+    }
+	return *this;
+}
 
 
 
@@ -38,12 +77,13 @@ void nx::WorkerLoop::Run(int threadId)
     auto& localCv = currentPack.cv;
     size_t spinCount = 0;
 
-    auto runTask = [&](Task& t)
+    auto runTask = [&](Task* t)
     {
         try
         {
             spinCount = 0;
-            t();
+            (*t)();
+			t->Destroy();
         }
         catch (std::exception& e)
         {
@@ -56,16 +96,16 @@ void nx::WorkerLoop::Run(int threadId)
     };
     while (!m_shutdown)
     {
-        if (Task task; currentPack.Consume(task))
+        if (Task* task = currentPack.Consume(); task)
         {
             runTask(task);
             continue;
         }
 
 
-        if (Task t; m_globalTaskQueue.try_dequeue(t))
+        if (Task* task; m_globalTaskQueue.try_dequeue(task))
         {
-            runTask(t);
+            runTask(task);
             continue;
         }
 
@@ -74,7 +114,7 @@ void nx::WorkerLoop::Run(int threadId)
             for (auto& q : m_threads)
             {
                 if (&q == &currentPack)continue;
-                if (Task task; q.Steal(task, threadId))
+                if (Task*  task = q.Steal(); task)
                 {
                     runTask(task);
                     return true;
@@ -89,20 +129,16 @@ void nx::WorkerLoop::Run(int threadId)
         }
 
         spinCount++;
-		//_logger.Trace(std::format("thread {} is spinning, spin count: {}", threadId, spinCount));
         if (spinCount >= (MaxSpinTimes / 2) && spinCount < MaxSpinTimes)
         {
-			_logger.Trace(std::format("thread {} is yielding, spin count: {}", threadId, spinCount));
             std::this_thread::yield();
         }
         else if (spinCount >= MaxSpinTimes)
         {
-            _logger.Trace(std::format("thread {} is waiting, spin count: {}", threadId, spinCount));
-
             std::unique_lock lock(localMutex);
             localCv.wait(lock, [&]()
             {
-                return currentPack.Empty() && m_globalTaskQueue.size_approx() == 0;
+                return !(currentPack.Empty() && m_globalTaskQueue.size_approx() == 0);
             });
         }
         __Pause();
@@ -120,32 +156,18 @@ void nx::WorkerLoop::Shutdown()
 
 }
 
- nx::Error nx::WorkerLoop::PostTask(Task&& task, int threadId) noexcept
+nx::Error nx::WorkerLoop::PostTask(Task* task, int threadId) noexcept
 {
-    if (threadId >= 0 && threadId < m_threads.size())
-    {
-        if (GetCurrentThreadIndex() == threadId)
-        {
-            if (m_threads[threadId].Product
-            (std::move(task)))return Succeeded;
-
-        }else
-        {
-            if (m_threads[threadId].ProductFromOtherThread(std::move(task)))return Succeeded;
+	auto currentThreadId = GetCurrentThreadIndex();
+    if (currentThreadId > -1 && currentThreadId < m_threads.size()) {
+        if (m_threads[currentThreadId].Produce(task)) {
+			return Succeeded;
         }
     }
-
-
-    if (m_globalTaskQueue.try_enqueue(std::move(task)))
-    {
-        for (auto &t : m_threads)
-        {
-            t.Notify();
-        }
-        return Succeeded;
+    if (m_globalTaskQueue.enqueue(task)) {
+		return Succeeded;
     }
-
-    return   nx::Unexpected(nx::make_error_code(EcsErrc::QueueFull));
+    return nx::Unexpected( nx::make_error_code(nx::EcsErrc::QueueFull));
 }
 
 nx::WorkerLoop::~WorkerLoop()
@@ -155,6 +177,6 @@ nx::WorkerLoop::~WorkerLoop()
 
 int& nx::WorkerLoop::GetCurrentThreadIndex() noexcept
 {
-    thread_local  int id;
+    thread_local  int id = -1;
     return id;
 }

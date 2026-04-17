@@ -27,7 +27,9 @@ namespace nx
         // Create a new window
         virtual Error Create(String title,const Rect& rect) noexcept = 0;
 
-        virtual bool IsValid() const noexcept = 0;
+        [[nodiscard]] virtual bool IsValid() const noexcept = 0;
+
+        [[nodiscard]]  virtual String GetTitle() const noexcept = 0;
 
         // Activate the window and bring it to the foreground.
         virtual void Activate() noexcept = 0;
@@ -70,7 +72,7 @@ namespace nx
         enum class Button { OK, OKCancel, YesNo, YesNoCancel };
         enum class Result { OK, Cancel, Yes, No };
         virtual ~IMessageBox() = default;
-        virtual Result show(const String& title, const String& message, Icon icon, Button buttons) = 0;
+        virtual Result show(const String& title, const String& message, Icon icon, Button buttons ,IWindow* parent = nullptr) = 0;
     };
 
 
